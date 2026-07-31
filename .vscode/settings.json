@@ -1,13 +1,10 @@
 {
   "git.enabled": true,
   "git.autofetch": true,
-  "git.autofetchPeriod": 60,
-  "git.enableSmartCommit": true,
-  "git.smartCommitChanges": "all",
-  "git.confirmSync": false,
-  "git.postCommitCommand": "push",
+  "git.enableSmartCommit": false,
+  "git.confirmSync": true,
+  "git.postCommitCommand": "none",
   "git.decorations.enabled": true,
   "scm.alwaysShowRepositories": true,
-  "scm.defaultViewMode": "tree",
-  "scm.repositories.sortOrder": "discoveryTime"
+  "scm.defaultViewMode": "tree"
 }

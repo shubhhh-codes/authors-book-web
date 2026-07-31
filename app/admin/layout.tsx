@@ -12,6 +12,15 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  const handleLogout = async () => {
+    await fetch('/api/admin/auth', { method: 'DELETE' });
+    window.location.href = '/admin/login';
+  };
+
   const navItems = [
     {
       label: 'Home',
@@ -55,6 +64,38 @@ export default function AdminLayout({
           <rect width="7" height="7" x="14" y="3" rx="1" />
           <rect width="7" height="7" x="14" y="14" rx="1" />
           <rect width="7" height="7" x="3" y="14" rx="1" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Customers',
+      href: '/admin/customers',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Discounts',
+      href: '/admin/discounts',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 5H2v7l10 10 10-10L12 2H9Z" />
+          <circle cx="7" cy="7" r="2" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Theme Customizer',
+      href: '/admin/theme',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2v20" />
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
         </svg>
       ),
     },
@@ -144,9 +185,17 @@ export default function AdminLayout({
             </svg>
           </Link>
 
-          {/* User Profile Avatar */}
-          <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-xs text-white">
-            SB
+          {/* User Profile Avatar & Sign Out */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleLogout}
+              className="text-xs font-semibold text-rose-300 hover:text-rose-100 bg-rose-500/20 hover:bg-rose-500/30 px-3 py-1.5 rounded-lg transition-colors border border-rose-500/30"
+            >
+              Sign Out
+            </button>
+            <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-xs text-white">
+              SB
+            </div>
           </div>
         </div>
       </header>

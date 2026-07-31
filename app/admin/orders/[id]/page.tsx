@@ -27,6 +27,9 @@ export default function OrderDetailPage() {
     if (params.id) fetchOrder();
   }, [params.id]);
 
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [fulfilling, setFulfilling] = useState(false);
+
   const handleUpdateStatus = async (newStatus: string) => {
     setUpdating(true);
     try {
@@ -42,6 +45,29 @@ export default function OrderDetailPage() {
       console.error('Update status error:', err);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleFulfill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFulfilling(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${params.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shipmentId: trackingNumber || `TRK-${Date.now().toString().slice(-6)}`,
+          status: 'shipped',
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrder(data.order);
+      }
+    } catch (err) {
+      console.error('Fulfill error:', err);
+    } finally {
+      setFulfilling(false);
     }
   };
 
@@ -142,6 +168,35 @@ export default function OrderDetailPage() {
                 <span>₹{order.total}</span>
               </div>
             </div>
+          </div>
+
+          {/* Order Fulfillment Card */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-2xs space-y-3 text-xs">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Order Fulfillment</h2>
+
+            {order.shipmentId ? (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 font-medium">
+                ✓ Order fulfilled & shipped. Tracking Number: <strong>{order.shipmentId}</strong>
+              </div>
+            ) : (
+              <form onSubmit={handleFulfill} className="space-y-3">
+                <p className="text-gray-600">Enter courier tracking number to fulfill this order:</p>
+                <input
+                  type="text"
+                  placeholder="e.g. AWB-987654321"
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                />
+                <button
+                  type="submit"
+                  disabled={fulfilling}
+                  className="bg-black text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 disabled:opacity-50 text-xs"
+                >
+                  {fulfilling ? 'Fulfilling...' : 'Mark as Fulfilled / Shipped'}
+                </button>
+              </form>
+            )}
           </div>
 
           {/* Payment Reference */}

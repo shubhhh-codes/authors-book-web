@@ -9,10 +9,10 @@
     "git.enabled": true,
     "git.autofetch": true,
     "git.autofetchPeriod": 60,
-    "git.enableSmartCommit": true,
+    "git.enableSmartCommit": false,
     "git.smartCommitChanges": "all",
     "git.confirmSync": false,
-    "git.postCommitCommand": "push",
+    "git.postCommitCommand": "none",
     "git.rebaseWhenSync": false,
 
     // Always show the repo + push/pull buttons in Source Control panel
