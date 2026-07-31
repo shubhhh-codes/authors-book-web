@@ -1,0 +1,47 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    // ── Git / Source Control ──────────────────────────────────────────
+    "git.enabled": true,
+    "git.autofetch": true,
+    "git.autofetchPeriod": 60,
+    "git.enableSmartCommit": true,
+    "git.smartCommitChanges": "all",
+    "git.confirmSync": false,
+    "git.postCommitCommand": "push",
+    "git.rebaseWhenSync": false,
+
+    // Always show the repo + push/pull buttons in Source Control panel
+    "scm.alwaysShowRepositories": true,
+    "scm.defaultViewMode": "tree",
+    "scm.repositories.sortOrder": "discoveryTime",
+
+    // Show changed-file decorations in Explorer sidebar
+    "git.decorations.enabled": true,
+
+    // Show inline diff when you click a changed file
+    "diffEditor.ignoreTrimWhitespace": false,
+    "diffEditor.renderSideBySide": true,
+
+    // ── Editor ───────────────────────────────────────────────────────
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+
+    // ── TypeScript ───────────────────────────────────────────────────
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true
+  },
+  "extensions": {
+    "recommendations": [
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint",
+      "bradlc.vscode-tailwindcss",
+      "ms-vscode.vscode-typescript-next"
+    ]
+  }
+}
