@@ -1,11 +1,12 @@
 import { connectDB } from '@/lib/db';
 import Product from '@/lib/schemas/Product';
 
-export async function GET(request: Request, { params }: { params: any }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> | any }) {
   try {
     await connectDB();
     
-    const product = await Product.findById(params.id);
+    const { id } = await params;
+    const product = await Product.findById(id);
     
     if (!product) {
       return Response.json({ error: 'Product not found' }, { status: 404 });

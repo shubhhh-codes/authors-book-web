@@ -13,12 +13,21 @@ export default function ProductPage() {
 
   useEffect(() => {
     const fetchProduct = async () => {
-      const res = await fetch(`/api/products/${params.id}`);
-      const data = await res.json();
-      setProduct(data);
+      try {
+        const res = await fetch(`/api/products/${params.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && !data.error) {
+          setProduct(data);
+        }
+      } catch (err) {
+        console.error('Error fetching product:', err);
+      }
     };
     
-    fetchProduct();
+    if (params.id) {
+      fetchProduct();
+    }
   }, [params.id]);
 
   const handleAddToCart = () => {
@@ -37,7 +46,6 @@ export default function ProductPage() {
     alert('✅ Added to cart!');
   };
 
-
   if (!product) {
     return (
       <>
@@ -47,6 +55,8 @@ export default function ProductPage() {
     );
   }
 
+  const images = product.images || [];
+
   return (
     <>
       <Navigation />
@@ -55,10 +65,10 @@ export default function ProductPage() {
           {/* Images */}
           <div>
             <div className="relative h-96 bg-gray-100 rounded-lg overflow-hidden mb-4">
-              {product.images[selectedImage] ? (
+              {images[selectedImage] ? (
                 <Image
-                  src={product.images[selectedImage].url}
-                  alt={product.images[selectedImage].alt || product.title}
+                  src={images[selectedImage].url}
+                  alt={images[selectedImage].alt || product.title}
                   fill
                   className="object-cover"
                   unoptimized
@@ -71,9 +81,9 @@ export default function ProductPage() {
             </div>
             
             {/* Image thumbnails */}
-            {product.images.length > 1 && (
+            {images.length > 1 && (
               <div className="flex gap-2">
-                {product.images.map((img: any, idx: number) => (
+                {images.map((img: any, idx: number) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
@@ -81,6 +91,7 @@ export default function ProductPage() {
                       selectedImage === idx ? 'border-black' : 'border-gray-300'
                     }`}
                   >
+
 
                     <Image
                       src={img.url}
