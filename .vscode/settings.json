@@ -1,0 +1,8 @@
+{
+  "git.enabled": true,
+  "git.autofetch": true,
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "git.postCommitCommand": "push",
+  "git.defaultCloneDirectory": null
+}
