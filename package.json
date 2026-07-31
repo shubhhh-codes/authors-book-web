@@ -1,0 +1,30 @@
+{
+  "name": "authorsbook-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "seed": "node scripts/seed.js"
+  },
+
+  "dependencies": {
+    "axios": "^1.19.0",
+    "csv-parser": "^3.2.1",
+    "mongodb": "^7.5.0",
+    "mongoose": "^9.9.0",
+    "next": "16.2.12",
+    "razorpay": "^2.9.8",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
