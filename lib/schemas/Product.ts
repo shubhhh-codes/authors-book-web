@@ -35,4 +35,13 @@ const ProductSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Add indexes for better query performance
+ProductSchema.index({ published: 1, createdAt: -1 });
+ProductSchema.index({ vendor: 1 });
+ProductSchema.index({ genre: 1 });
+ProductSchema.index({ type: 1 });
+ProductSchema.index({ tags: 1 });
+ProductSchema.index({ handle: 1 }, { unique: true, sparse: true });
+ProductSchema.index({ title: 'text', description: 'text' }); // Full-text search index
+
 export default mongoose.models.Product || mongoose.model('Product', ProductSchema);
