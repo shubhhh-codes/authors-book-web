@@ -1,10 +1,7 @@
 import Link from 'next/link';
 import type { CategoryCard } from '@/lib/types';
 
-// ─── Static data extracted verbatim from templates/index.json ──────────────
-// Shopify CDN image paths are replaced with public/images/ paths.
-// Drop your actual images into authorsbook-web/public/images/categories/
-// and rename them to match, OR leave src blank to show the coloured-card fallback.
+// ─── Static data extracted from templates/index.json + 3D Bookmarks option ────
 
 const CATEGORIES: CategoryCard[] = [
   {
@@ -26,6 +23,16 @@ const CATEGORIES: CategoryCard[] = [
     link: '/shop?tag=best-seller',
     bgColor: '#222222',
     borderColor: '#ffffff',
+  },
+  {
+    heading: '3D Bookmarks',
+    textColor: '#000000',
+    buttonLabel: 'View all',
+    buttonBgColor: '#000000',
+    buttonTextColor: '#ffffff',
+    link: '/shop?tag=3d&type=bookmark',
+    bgColor: '#e5e7eb',
+    borderColor: '#000000',
   },
   {
     heading: 'Adapted & Appeared in Films',
@@ -53,7 +60,7 @@ const CATEGORIES: CategoryCard[] = [
     buttonLabel: 'View all',
     buttonBgColor: '#ffffff',
     buttonTextColor: '#000000',
-    link: '/shop?tag=iconic',
+    link: '/shop?tag=iconic&type=bookmark',
     bgColor: '#222222',
     borderColor: '#ffffff',
   },
@@ -69,7 +76,7 @@ const CATEGORIES: CategoryCard[] = [
   },
 ];
 
-// Decorative book SVG used when no image is available (mirrors placeholder_svg_tag)
+// Decorative book SVG used when no image is available
 function BookPlaceholder({ textColor }: { textColor: string }) {
   return (
     <svg
@@ -94,7 +101,6 @@ export default function CategoryGrid() {
       className="book-grid-section"
       aria-labelledby="category-grid-heading"
     >
-      {/* Screen-reader-only heading for accessibility */}
       <h2 id="category-grid-heading" className="sr-only">
         Browse by Category
       </h2>
@@ -112,7 +118,6 @@ export default function CategoryGrid() {
             }}
             aria-label={`${cat.heading} – ${cat.buttonLabel}`}
           >
-            {/* Text content */}
             <div className="book-grid-content">
               <h2
                 className="book-grid-title"
@@ -134,7 +139,6 @@ export default function CategoryGrid() {
               )}
             </div>
 
-            {/* Decorative image overlay */}
             <div className="book-grid-image-wrapper" aria-hidden="true">
               <BookPlaceholder textColor={cat.textColor} />
             </div>

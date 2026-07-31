@@ -67,6 +67,7 @@ const BOOK_COLLECTIONS: CollectionPreview[] = [
 ];
 
 const BOOKMARK_COLLECTIONS: CollectionPreview[] = [
+  { name: '3D Bookmarks', handle: '3d-bookmarks', href: '/shop?tag=3d&type=bookmark', bgColor: '#3d2b1f' },
   { name: 'Filmy',  handle: 'filmy',  href: '/shop?tag=filmy&type=bookmark',  bgColor: '#0f3460' },
   { name: 'Anime',  handle: 'anime',  href: '/shop?tag=anime&type=bookmark',  bgColor: '#1b4332' },
   { name: 'Iconic', handle: 'iconic', href: '/shop?tag=iconic&type=bookmark', bgColor: '#6b4226' },
