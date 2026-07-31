@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
+import CartDrawer from '@/components/CartDrawer';
 import { useParams } from 'next/navigation';
 
 export default function ProductPage() {
@@ -30,10 +31,13 @@ export default function ProductPage() {
     }
   }, [params.id]);
 
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
   const handleAddToCart = () => {
     if (!product) return;
     
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const saved = localStorage.getItem('ab_cart') || localStorage.getItem('cart') || '[]';
+    const cart = JSON.parse(saved);
     const existingItem = cart.find((item: any) => item._id === product._id);
     
     if (existingItem) {
@@ -42,8 +46,10 @@ export default function ProductPage() {
       cart.push({ ...product, quantity });
     }
     
+    localStorage.setItem('ab_cart', JSON.stringify(cart));
     localStorage.setItem('cart', JSON.stringify(cart));
-    alert('✅ Added to cart!');
+    window.dispatchEvent(new Event('cart-updated'));
+    setIsCartOpen(true);
   };
 
   if (!product) {
@@ -177,6 +183,8 @@ export default function ProductPage() {
           </div>
         </div>
       </div>
+
+      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
 }
