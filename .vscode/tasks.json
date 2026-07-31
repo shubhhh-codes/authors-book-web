@@ -1,0 +1,107 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "📤 Stage All & Push to GitHub",
+      "type": "shell",
+      "command": "git add -A && git diff --cached --quiet && echo 'Nothing to commit.' || (git commit -m \"chore: update $(date '+%Y-%m-%d %H:%M')\" && git push && echo '✅ Pushed to GitHub!')",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "focus": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "📝 Commit with message & Push",
+      "type": "shell",
+      "command": "git add -A && git commit -m \"${input:commitMessage}\" && git push && echo '✅ Pushed to GitHub!'",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "focus": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "↩ Revert ALL uncommitted changes",
+      "type": "shell",
+      "command": "git checkout -- . && git clean -fd && echo '↩ All changes reverted to last commit.'",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "focus": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "↩ Revert current file",
+      "type": "shell",
+      "command": "git checkout -- \"${relativeFile}\" && echo '↩ Reverted: ${relativeFile}'",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "focus": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "📋 Show changed files",
+      "type": "shell",
+      "command": "git status && echo '' && git diff --stat",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "⬇️ Pull latest from GitHub",
+      "type": "shell",
+      "command": "git pull && echo '✅ Up to date.'",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "commitMessage",
+      "description": "Commit message:",
+      "default": "feat: update",
+      "type": "promptString"
+    }
+  ]
+}

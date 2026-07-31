@@ -1,0 +1,17 @@
+[
+  {
+    "key": "ctrl+shift+g ctrl+p",
+    "command": "workbench.action.tasks.runTask",
+    "args": "📤 Stage All & Push to GitHub"
+  },
+  {
+    "key": "ctrl+shift+g ctrl+m",
+    "command": "workbench.action.tasks.runTask",
+    "args": "📝 Commit with message & Push"
+  },
+  {
+    "key": "ctrl+shift+g ctrl+r",
+    "command": "workbench.action.tasks.runTask",
+    "args": "↩ Revert current file"
+  }
+]
