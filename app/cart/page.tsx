@@ -68,11 +68,21 @@ export default function Cart() {
     setLoading(true);
 
     try {
+      // Transform cart items: _id → productId for validation
+      const checkoutItems = cart.map((item: any) => ({
+        productId: item._id,  // ✅ Convert MongoDB _id to productId
+        handle: item.handle || '',
+        title: item.title,
+        sku: item.sku || '',
+        price: item.price,
+        quantity: item.quantity,
+      }));
+
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: cart,
+          items: checkoutItems,  // ✅ Now has correct format
           subtotal,
           shippingCost,
           total,
