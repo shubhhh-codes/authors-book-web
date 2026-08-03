@@ -41,7 +41,14 @@ export async function POST(request: Request) {
     } = payload;
 
     // ✅ 2. Verify items exist in database and prices match
-    const productIds = items.map(item => item.productId);
+    const productIds = items.map(item => {
+      try {
+        // Convert string productId to MongoDB ObjectId
+        return new (require('mongoose')).Types.ObjectId(item.productId);
+      } catch (e) {
+        throw new Error(`Invalid product ID format: ${item.productId}`);
+      }
+    });
     const dbProducts = await Product.find({ _id: { $in: productIds } });
 
     if (dbProducts.length !== items.length) {

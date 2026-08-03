@@ -98,10 +98,20 @@ export default function Cart() {
         }),
       });
 
+      // ✅ Check HTTP response status first
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = errorData.error || 'Checkout failed';
+        console.error(`[Checkout Error ${response.status}]`, errorMessage);
+        throw new Error(errorMessage);
+      }
+
       const data = await response.json();
 
-      if (!data.razorpayOrderId) {
-        throw new Error('Failed to create order');
+      // ✅ Validate response has required fields
+      if (!data.razorpayOrderId || !data.orderId) {
+        console.error('[Checkout Error] Missing required response fields:', data);
+        throw new Error('Invalid server response - missing order details');
       }
 
       // Load Razorpay
@@ -129,11 +139,19 @@ export default function Cart() {
 
             const verifyData = await verifyRes.json();
 
+            // ✅ Check response status first
+            if (!verifyRes.ok) {
+              console.error('[Payment Verification Error]', verifyData);
+              alert(`Payment verification failed: ${verifyData.error || 'Unknown error'}`);
+              return;
+            }
+
             if (verifyData.success) {
               localStorage.removeItem('cart');
               router.push(`/order-success/${data.bookingId}`);
             } else {
-              alert('Payment verification failed');
+              console.error('[Payment Verification Failed]', verifyData);
+              alert('Payment verification failed: ' + (verifyData.message || 'Unknown error'));
             }
           },
           prefill: {
@@ -148,7 +166,16 @@ export default function Cart() {
       };
       document.body.appendChild(script);
     } catch (error: any) {
-      alert('Checkout error: ' + error.message);
+      // ✅ Log full error for debugging
+      console.error('[Checkout Exception]', {
+        message: error.message,
+        stack: error.stack,
+        type: error.constructor.name,
+      });
+      
+      // ✅ Show user-friendly error message
+      const userMessage = error.message || 'Checkout failed. Please try again.';
+      alert('Checkout error: ' + userMessage);
     } finally {
       setLoading(false);
     }
