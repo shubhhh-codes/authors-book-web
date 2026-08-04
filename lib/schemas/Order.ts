@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const OrderSchema = new mongoose.Schema({
-  bookingId: { type: String, unique: true },
+  bookingId: { type: String, unique: true, sparse: true },  // ✅ sparse: true prevents index errors
   customerEmail: String,
   customerName: String,
   customerPhone: String,
