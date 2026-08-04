@@ -73,7 +73,7 @@ const pageColor = new THREE.Color("#e9dfca");
 const shelfColor = new THREE.Color("#5a4132");
 const clamp = THREE.MathUtils.clamp;
 const focusInDuration = 0.46;
-const focusOutDuration = 0.34;
+const focusOutDuration = 0.52;
 const desktopDetailWidthRatio = 0.41;
 const compactDetailWidthRatio = 0.48;
 const desktopDetailMaxWidth = 620;
@@ -182,6 +182,7 @@ export class ShelfEngine {
   private scrollIndex = 0;
   private targetScrollIndex = 0;
   private focusProgress = 0;
+  private isInspectingSwitch = false;
   private lastInputTime = 0;
   private pointerDown = false;
   private pointerId: number | null = null;
@@ -977,14 +978,24 @@ export class ShelfEngine {
       );
       this.camera.lookAt(browseTarget);
     } else if (this.mode === "focusing") {
+      const switchFactor = this.isInspectingSwitch ? 5.5 : 14;
+      const duration = this.isInspectingSwitch ? 0.75 : focusInDuration;
+
+      this.scrollIndex = damp(
+        this.scrollIndex,
+        this.targetScrollIndex,
+        switchFactor,
+        delta,
+      );
       this.focusProgress = clamp(
         this.focusProgress +
-          delta / (this.reducedMotion ? 0.08 : focusInDuration),
+          delta / (this.reducedMotion ? 0.08 : duration),
         0,
         1,
       );
       this.updateFocusCamera(delta);
       if (this.focusProgress >= 1) {
+        this.isInspectingSwitch = false;
         this.mode = "inspect";
         this.controls.enabled = true;
         this.controls.target.copy(this.focusCameraTarget);
@@ -1045,7 +1056,9 @@ export class ShelfEngine {
       this.mode === "returning"
         ? this.focusProgress
         : easeOutCubic(this.focusProgress);
-    const isolated = this.selectedIndex !== null && motionFocus > 0.72;
+    const isolated =
+      this.selectedIndex !== null &&
+      (motionFocus > 0.72 || this.isInspectingSwitch);
     this.shelfFurniture.visible = !isolated;
     const focusX = window.innerWidth < 760 ? 0 : desktopFocusX;
     const focusZ =
@@ -1117,9 +1130,10 @@ export class ShelfEngine {
     const worldPosition = new THREE.Vector3();
     selected.content.getWorldPosition(worldPosition);
     this.frameFocusedBook(worldPosition, easeOutCubic(this.focusProgress));
+    const camLambda = this.isInspectingSwitch ? 6.5 : (this.reducedMotion ? 28 : 13);
     this.camera.position.lerp(
       this.focusCameraPosition,
-      1 - Math.exp(-(this.reducedMotion ? 28 : 13) * delta),
+      1 - Math.exp(-camLambda * delta),
     );
     this.camera.lookAt(this.focusCameraTarget);
   }
@@ -1433,6 +1447,11 @@ export class ShelfEngine {
     if (this.mode === "browse" || this.mode === "returning") return;
     this.controls.enabled = false;
     this.mode = "returning";
+    // Clear all hover states so no book appears stuck highlighted after return
+    this.runtimeBooks.forEach((book) => {
+      book.targetHover = 0;
+      book.hover = 0;
+    });
     this.callbacks.onMode(this.mode, this.selectedIndex);
     this.callbacks.onStatus("Returning to the complete shelf");
   }
@@ -1455,19 +1474,19 @@ export class ShelfEngine {
 
     this.callbacks.onStatus(`Preparing ${this.runtimeBooks[next].data.shortTitle}`);
     
-    // Smoothly return current book to shelf
-    this.commitBookPose(
-      this.runtimeBooks[this.selectedIndex],
-      presentedBookPose(this.motionLayout)
-    );
-    this.presentedIndex = this.selectedIndex;
+    // Shelve the current book fully (not just to presentedBookPose) because
+    // presentedIndex is immediately switching to `next` — leaving the old book
+    // in presentedBookPose with no owner would cause it to appear stuck on return.
+    const oldBook = this.runtimeBooks[this.selectedIndex];
+    this.commitBookPose(oldBook, shelvedBookPose(this.motionLayout), false);
+    oldBook.targetHover = 0;
+    oldBook.hover = 0;
 
     // Reset controls
     this.controls.enabled = false;
 
     // Setup new index selection targets
     this.targetScrollIndex = next;
-    this.scrollIndex = next;
     this.activeIndex = next;
     this.callbacks.onActiveIndex(next);
 
@@ -1475,6 +1494,7 @@ export class ShelfEngine {
     this.selectedIndex = next;
     this.presentedIndex = next;
     this.focusProgress = 0;
+    this.isInspectingSwitch = true;
     this.mode = "focusing";
     this.callbacks.onMode(this.mode, next);
   }

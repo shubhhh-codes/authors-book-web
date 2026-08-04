@@ -1,45 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useParams } from "next/navigation";
-import { ProgressLibrary } from "../../ProgressLibrary";
-import AboutUs from "@/components/AboutUs";
-import AccordionSection from "@/components/AccordionSection";
-import Footer from "@/components/Footer";
 
+/**
+ * /book/[slug] is a shareable deep-link URL used only for URL bar display
+ * via window.history.pushState while the SPA is running on the home page.
+ *
+ * If someone opens /book/[slug] directly (e.g. shared link, page refresh),
+ * redirect them to the home page with an ?open= query param so
+ * ProgressLibrary can auto-focus that book without a separate full mount.
+ */
 export default function BookSlugPage() {
   const params = useParams();
-  const rawSlug = params?.slug;
-  const slug =
-    typeof rawSlug === "string"
-      ? rawSlug
-      : Array.isArray(rawSlug)
-      ? rawSlug[0]
-      : "";
-  const [isFocused, setIsFocused] = useState(true);
+  const slug = typeof params?.slug === "string" ? params.slug : "";
 
-  return (
-    <div
-      className={`relative bg-[var(--paper)] ${
-        isFocused ? "h-[100dvh] overflow-hidden" : "min-h-screen overflow-y-auto"
-      }`}
-    >
-      {/* 3D bookshelf section initialized with the book slug */}
-      <div className="w-full h-[100dvh]">
-        <ProgressLibrary initialSlug={slug} onFocusChange={setIsFocused} />
-      </div>
+  useEffect(() => {
+    // Redirect to home page with a query param so ProgressLibrary's
+    // getSlugFromLocation reads it and focuses the correct book.
+    if (slug) {
+      window.location.replace(`/?book=${encodeURIComponent(slug)}`);
+    } else {
+      window.location.replace("/");
+    }
+  }, [slug]);
 
-      {/* Main page content sections appearing below the shelf only when browsing */}
-      {!isFocused && (
-        <>
-          <main id="main-content" className="relative z-30 bg-[var(--paper)]">
-            <AboutUs />
-            <AccordionSection />
-          </main>
-
-          <Footer />
-        </>
-      )}
-    </div>
-  );
+  // Show nothing while redirecting — home page handles the experience.
+  return null;
 }

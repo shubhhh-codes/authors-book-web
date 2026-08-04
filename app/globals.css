@@ -679,8 +679,8 @@ canvas:focus-visible {
   pointer-events: none;
   transform: translateX(44px);
   transition:
-    opacity 420ms ease 80ms,
-    transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 380ms cubic-bezier(0.4, 0, 1, 1),
+    transform 520ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .book-details::before {
@@ -697,6 +697,38 @@ canvas:focus-visible {
   opacity: 1;
   pointer-events: auto;
   transform: translateX(0);
+}
+
+/* During the return animation, immediately start sliding the detail panel out */
+.is-returning .book-details {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(52px);
+  transition:
+    opacity 260ms cubic-bezier(0.4, 0, 1, 1),
+    transform 380ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Shelf browse UI fades back in during the return animation with a slight delay */
+.is-returning .shelf-index {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 400ms ease 180ms,
+    transform 500ms cubic-bezier(0.22, 1, 0.36, 1) 180ms;
+}
+
+.is-returning .browse-caption {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 400ms ease 220ms,
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1) 220ms;
+}
+
+.is-returning .shelf-arrow {
+  opacity: 1;
+  transition: opacity 350ms ease 160ms;
 }
 
 .book-details__inner {
@@ -783,6 +815,18 @@ canvas:focus-visible {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--hairline) transparent;
+  animation: fadeInCopy 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fadeInCopy {
+  from {
+    opacity: 0.15;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .book-details__copy .eyebrow {
@@ -974,61 +1018,147 @@ canvas:focus-visible {
   place-content: center;
   justify-items: center;
   background: var(--paper);
-  transition:
-    opacity 720ms ease 120ms,
-    visibility 720ms ease 120ms;
+  transition: transform 1.2s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.curtain-layer {
+  position: absolute;
+  z-index: 39;
+  inset: 0;
+  background: var(--paper-deep);
+  transition: transform 1.2s cubic-bezier(0.76, 0, 0.24, 1) 0.1s;
 }
 
 .is-ready .loading-screen {
-  visibility: hidden;
-  opacity: 0;
+  transform: translateY(-100%);
 }
 
-.loading-screen__mark {
+.is-ready .curtain-layer {
+  transform: translateY(-100%);
+}
+
+.bookshelf-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.bookshelf-loader__books {
   display: flex;
   gap: 5px;
   align-items: flex-end;
-  height: 62px;
+  height: 65px;
+  padding-bottom: 2px;
+  position: relative;
 }
 
-.loading-screen__mark span {
+.bookshelf-loader__shelf {
+  width: 136px;
+  height: 4px;
+  background: #5a4132;
+  border-radius: 2px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.book-spine {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 2px;
+  border-radius: 2px 2px 0 0;
+  box-shadow: inset -1px 0 2px rgba(0, 0, 0, 0.25), inset 1px 0 1px rgba(255, 255, 255, 0.2);
+  animation: pullBook 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.book-spine__stripe {
   display: block;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 1px;
+}
+
+.book-spine__bookmark {
+  position: absolute;
+  bottom: -9px;
+  right: 3px;
+  width: 3px;
+  height: 10px;
+  background: #bf493f;
+  border-radius: 0 0 1px 1px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Book 1: Deep Navy */
+.book-spine--1 {
   width: 13px;
-  background: var(--ink);
-  animation: assemble 1.25s ease-in-out infinite alternate;
+  height: 52px;
+  background: #1c304b;
+  animation-delay: 0s;
 }
 
-.loading-screen__mark span:nth-child(1) {
-  height: 46px;
+/* Book 2: Terracotta Red (with hanging bookmark) */
+.book-spine--2 {
+  width: 15px;
+  height: 62px;
+  background: #bf493f;
+  animation-delay: 0.38s;
 }
 
-.loading-screen__mark span:nth-child(2) {
-  height: 59px;
-  animation-delay: -0.42s;
+/* Book 3: Vintage Cream */
+.book-spine--3 {
+  width: 12px;
+  height: 48px;
+  background: #e8ddc6;
+  border: 1px solid rgba(37, 35, 31, 0.15);
+  animation-delay: 0.76s;
+}
+.book-spine--3 .book-spine__stripe {
+  background: rgba(37, 35, 31, 0.35);
 }
 
-.loading-screen__mark span:nth-child(3) {
-  height: 39px;
-  animation-delay: -0.78s;
+/* Book 4: Forest Green */
+.book-spine--4 {
+  width: 14px;
+  height: 57px;
+  background: #2b5941;
+  animation-delay: 1.14s;
 }
 
-.loading-screen p {
-  margin: 19px 0 0;
-  font-size: 9px;
-  font-weight: 620;
-  letter-spacing: 0.17em;
+/* Book 5: Warm Gold / Amber */
+.book-spine--5 {
+  width: 13px;
+  height: 44px;
+  background: #d49a37;
+  animation-delay: 1.52s;
+}
+
+@keyframes pullBook {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+  25% {
+    transform: translateY(-9px) scale(1.03);
+    filter: brightness(1.12);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15), inset -1px 0 2px rgba(0, 0, 0, 0.25);
+  }
+  50% {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+}
+
+.loading-screen__branding {
+  margin: 22px 0 0;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-}
-
-@keyframes assemble {
-  from {
-    opacity: 0.45;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  color: var(--ink);
 }
 
 .independent-note {

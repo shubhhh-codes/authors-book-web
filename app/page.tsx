@@ -25,6 +25,8 @@ export default function Home() {
         <>
           <main id="main-content" className="relative z-30 bg-[var(--paper)]">
             <AboutUs />
+            {/* Full-width section divider between About Us and Miscellaneous Points */}
+            <div className="w-full h-px bg-[var(--hairline)]" aria-hidden="true" />
             <AccordionSection />
           </main>
 

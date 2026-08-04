@@ -16,12 +16,18 @@ function ArrowIcon({ direction }: { direction: "left" | "right" }) {
 
 function getSlugFromLocation(): string | null {
   if (typeof window === "undefined") return null;
+  // Check ?book= query param first (used by /book/[slug] redirect)
+  const params = new URLSearchParams(window.location.search);
+  const queryBook = params.get("book");
+  if (queryBook) return queryBook;
+  // Fallback: check /book/[slug] path (used when SPA pushState is active)
   const path = window.location.pathname;
   if (path.startsWith("/book/")) {
     return path.replace("/book/", "");
   }
   return null;
 }
+
 
 interface ProgressLibraryProps {
   initialSlug?: string;
@@ -66,9 +72,18 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
               const bookSlug = catalog[index].id;
               const targetPath = `/book/${bookSlug}`;
               if (window.location.pathname !== targetPath) {
-                window.history.pushState({ bookSlug }, "", targetPath);
+                // If already on a book URL (arrow navigation between books),
+                // use replaceState so back button always goes to "/", not another book.
+                // Only pushState when first entering from browse mode ("/").
+                const isEnteringFocus = !window.location.pathname.startsWith("/book/");
+                if (isEnteringFocus) {
+                  window.history.pushState({ bookSlug }, "", targetPath);
+                } else {
+                  window.history.replaceState({ bookSlug }, "", targetPath);
+                }
               }
             } else if (!isFocusedNow) {
+              // Return to homepage — pop the book entry off history cleanly.
               if (window.location.pathname !== "/") {
                 window.history.pushState({ bookSlug: null }, "", "/");
               }
@@ -100,15 +115,15 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
 
   useEffect(() => {
     function handlePopState() {
-      const slug = getSlugFromLocation();
-      if (slug) {
-        const idx = findBookIndexBySlug(slug);
-        if (idx !== -1 && engineRef.current) {
-          engineRef.current.focusBook(idx);
-        }
-      } else if (engineRef.current) {
+      // Desired behaviour: pressing Back from any book inspection always
+      // returns to the shelf browse mode — never navigates between books.
+      // Arrow-book navigation uses replaceState so there is only one history
+      // entry per "inspect session"; popping it should always mean "go home".
+      if (engineRef.current) {
         engineRef.current.returnToShelf();
       }
+      // If the popped URL is "/", we're already done.
+      // If it's another book slug (deep-link session), also return to shelf.
     }
 
     window.addEventListener("popstate", handlePopState);
@@ -118,7 +133,11 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
   return (
     <main
       className={`press-experience ${ready ? "is-ready" : ""} ${
-        isFocused ? "is-focused" : "is-browsing"
+        mode === "returning"
+          ? "is-focused is-returning"
+          : isFocused
+          ? "is-focused"
+          : "is-browsing"
       }`}
     >
       <canvas
@@ -256,7 +275,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
               </button>
             </div>
 
-            <div className="book-details__copy">
+            <div key={selectedBook.id} className="book-details__copy">
               <p className="eyebrow">{siteConfig.editionEyebrow}</p>
               <h2>{selectedBook.title}</h2>
               <p className="book-details__author">{selectedBook.author}</p>
@@ -320,13 +339,31 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
       </div>
 
       <div className="loading-screen" aria-hidden={ready}>
-        <div className="loading-screen__mark">
-          <span />
-          <span />
-          <span />
+        <div className="bookshelf-loader" aria-hidden="true">
+          <div className="bookshelf-loader__books">
+            <div className="book-spine book-spine--1">
+              <i className="book-spine__stripe" />
+            </div>
+            <div className="book-spine book-spine--2">
+              <i className="book-spine__stripe" />
+              <div className="book-spine__bookmark" />
+            </div>
+            <div className="book-spine book-spine--3">
+              <i className="book-spine__stripe" />
+            </div>
+            <div className="book-spine book-spine--4">
+              <i className="book-spine__stripe" />
+            </div>
+            <div className="book-spine book-spine--5">
+              <i className="book-spine__stripe" />
+            </div>
+          </div>
+          <div className="bookshelf-loader__shelf" />
         </div>
-          <p>Assembling {catalog.length} volumes</p>
-        </div>
+        <p className="loading-screen__branding">Authors Book &amp; Bookmarks</p>
+      </div>
+
+      <div className="curtain-layer" aria-hidden={ready} />
 
       <div className="sr-only" aria-live="polite">
         {isFocused && selectedBook

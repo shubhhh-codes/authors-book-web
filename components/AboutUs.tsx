@@ -52,22 +52,6 @@ export default function AboutUs() {
             world through an author&rsquo;s eyes.
           </p>
         </div>
-
-        {/* Action links matching "VIEW BOOK ↗" style */}
-        <div className="mt-12 flex flex-col sm:flex-row gap-8 justify-center font-[family-name:var(--sans)]">
-          <a
-            href="/shop"
-            className="inline-flex gap-3 items-center uppercase text-[10px] font-bold tracking-widest pb-1 border-b border-[var(--ink)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all"
-          >
-            Start Shopping <span>↗</span>
-          </a>
-          <a
-            href="/shop?type=bookmark"
-            className="inline-flex gap-3 items-center uppercase text-[10px] font-bold tracking-widest pb-1 border-b border-[var(--ink)]/50 hover:border-[var(--ink)] hover:text-[var(--ink)] transition-all text-[var(--ink-soft)]"
-          >
-            Browse Bookmarks <span>↗</span>
-          </a>
-        </div>
       </div>
     </section>
   );
