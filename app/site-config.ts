@@ -1,18 +1,16 @@
 export const siteConfig = {
-  title: "The Complete Shelf — An Interactive 3D Library",
-  applicationName: "The Complete Shelf",
+  title: "Authors Book | Books & Bookmarks",
+  applicationName: "Authors Book | Books & Bookmarks",
   description:
     "Explore a tactile 3D bookshelf with procedural hardcovers and optional contributor-owned cover art.",
-  wordmark: "THE COMPLETE SHELF",
+  wordmark: "AUTHORS BOOK",
   collectionName: "AN INTERACTIVE 3D LIBRARY",
   editionEyebrow: "LIBRARY EDITION",
-  coverImprint: "THE COMPLETE SHELF",
+  coverImprint: "AUTHORS BOOK & BOOKMARKS",
   coverTagline: "AN INTERACTIVE LIBRARY",
   spineMark: "CS",
   bookLinkLabel: "View book",
   socialImageAlt:
     "The Complete Shelf, with tactile abstract hardcovers and one book pulled forward on a walnut shelf.",
   enableOptionalStripeArchive: false,
-  independentNote:
-    "Independent open-source project. Not affiliated with or endorsed by Stripe.",
 } as const;

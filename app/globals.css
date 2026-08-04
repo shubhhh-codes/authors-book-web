@@ -578,12 +578,12 @@ canvas:focus-visible {
   position: absolute;
   z-index: 19;
   right: clamp(24px, 5vw, 82px);
-  bottom: 34px;
+  bottom: 12px;
   left: clamp(24px, 5vw, 82px);
   display: grid;
   grid-template-columns: minmax(280px, 1fr) auto;
   gap: 38px;
-  align-items: end;
+  align-items: center;
   transition:
     opacity 300ms ease,
     transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -630,7 +630,7 @@ canvas:focus-visible {
   width: 1px;
   height: 7px;
   background: var(--ink);
-  opacity: 0.48;
+  opacity: 0.65;
   transition:
     height 220ms ease,
     opacity 220ms ease,
@@ -642,18 +642,23 @@ canvas:focus-visible {
   width: 2px;
   height: 18px;
   opacity: 1;
+  background: var(--ink);
 }
 
 .input-hint {
   display: flex;
   gap: 11px;
   align-items: center;
-  padding-bottom: 1px;
-  color: var(--ink-soft);
+  padding: 4px 12px;
+  color: var(--ink);
   white-space: nowrap;
-  font-size: 8px;
-  font-weight: 600;
+  font-size: 9px;
+  font-weight: 650;
   letter-spacing: 0.14em;
+  background: rgba(238, 232, 219, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--hairline);
+  border-radius: 99px;
 }
 
 .input-hint i {
@@ -1166,7 +1171,7 @@ canvas:focus-visible {
 
   .shelf-index {
     right: 72px;
-    bottom: 68px;
+    bottom: 24px;
     left: 72px;
     display: block;
   }

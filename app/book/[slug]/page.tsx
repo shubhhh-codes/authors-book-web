@@ -1,13 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { ProgressLibrary } from "./ProgressLibrary";
+import { useParams } from "next/navigation";
+import { ProgressLibrary } from "../../ProgressLibrary";
 import AboutUs from "@/components/AboutUs";
 import AccordionSection from "@/components/AccordionSection";
 import Footer from "@/components/Footer";
 
-export default function Home() {
-  const [isFocused, setIsFocused] = useState(false);
+export default function BookSlugPage() {
+  const params = useParams();
+  const rawSlug = params?.slug;
+  const slug =
+    typeof rawSlug === "string"
+      ? rawSlug
+      : Array.isArray(rawSlug)
+      ? rawSlug[0]
+      : "";
+  const [isFocused, setIsFocused] = useState(true);
 
   return (
     <div
@@ -15,9 +24,9 @@ export default function Home() {
         isFocused ? "h-[100dvh] overflow-hidden" : "min-h-screen overflow-y-auto"
       }`}
     >
-      {/* 3D bookshelf section takes full screen height */}
+      {/* 3D bookshelf section initialized with the book slug */}
       <div className="w-full h-[100dvh]">
-        <ProgressLibrary onFocusChange={setIsFocused} />
+        <ProgressLibrary initialSlug={slug} onFocusChange={setIsFocused} />
       </div>
 
       {/* Main page content sections appearing below the shelf only when browsing */}

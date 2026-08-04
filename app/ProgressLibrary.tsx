@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { catalog } from "./catalog";
+import { catalog, findBookIndexBySlug } from "./catalog";
 import { ShelfEngine, type ShelfMode } from "./ShelfEngine";
 import { siteConfig } from "./site-config";
+import { div } from "three/tsl";
 
 function ArrowIcon({ direction }: { direction: "left" | "right" }) {
   return (
@@ -13,7 +14,21 @@ function ArrowIcon({ direction }: { direction: "left" | "right" }) {
   );
 }
 
-export function ProgressLibrary() {
+function getSlugFromLocation(): string | null {
+  if (typeof window === "undefined") return null;
+  const path = window.location.pathname;
+  if (path.startsWith("/book/")) {
+    return path.replace("/book/", "");
+  }
+  return null;
+}
+
+interface ProgressLibraryProps {
+  initialSlug?: string;
+  onFocusChange?: (isFocused: boolean) => void;
+}
+
+export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<ShelfEngine | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -43,9 +58,34 @@ export function ProgressLibrary() {
         onMode: (nextMode, index) => {
           setMode(nextMode);
           setSelectedIndex(index);
+          const isFocusedNow = nextMode !== "browse";
+          onFocusChange?.(isFocusedNow);
+
+          if (typeof window !== "undefined") {
+            if (isFocusedNow && index !== null && catalog[index]) {
+              const bookSlug = catalog[index].id;
+              const targetPath = `/book/${bookSlug}`;
+              if (window.location.pathname !== targetPath) {
+                window.history.pushState({ bookSlug }, "", targetPath);
+              }
+            } else if (!isFocusedNow) {
+              if (window.location.pathname !== "/") {
+                window.history.pushState({ bookSlug: null }, "", "/");
+              }
+            }
+          }
         },
         onStatus: setStatus,
-        onReady: () => setReady(true),
+        onReady: () => {
+          setReady(true);
+          const targetSlug = initialSlug || getSlugFromLocation();
+          if (targetSlug) {
+            const initialIdx = findBookIndexBySlug(targetSlug);
+            if (initialIdx !== -1) {
+              engine?.focusBook(initialIdx);
+            }
+          }
+        },
       });
       engineRef.current = engine;
     }
@@ -56,6 +96,23 @@ export function ProgressLibrary() {
       engine?.dispose();
       engineRef.current = null;
     };
+  }, [initialSlug]);
+
+  useEffect(() => {
+    function handlePopState() {
+      const slug = getSlugFromLocation();
+      if (slug) {
+        const idx = findBookIndexBySlug(slug);
+        if (idx !== -1 && engineRef.current) {
+          engineRef.current.focusBook(idx);
+        }
+      } else if (engineRef.current) {
+        engineRef.current.returnToShelf();
+      }
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   return (
@@ -79,13 +136,10 @@ export function ProgressLibrary() {
           aria-label={`${siteConfig.wordmark}, ${siteConfig.collectionName}`}
         >
           <span>{siteConfig.wordmark}</span>
-          <span className="wordmark__divider" />
-          <span>{siteConfig.collectionName}</span>
         </div>
         <div className="header-actions">
           <div className="edition-mark">
-            <span>{catalog.length} VOLUMES</span>
-            <span>01 CONTINUOUS SHELF</span>
+            <span>BOOK SHELF </span>
           </div>
         </div>
       </header>
@@ -271,10 +325,8 @@ export function ProgressLibrary() {
           <span />
           <span />
         </div>
-        <p>Assembling {catalog.length} volumes</p>
-      </div>
-
-      <p className="independent-note">{siteConfig.independentNote}</p>
+          <p>Assembling {catalog.length} volumes</p>
+        </div>
 
       <div className="sr-only" aria-live="polite">
         {isFocused && selectedBook
