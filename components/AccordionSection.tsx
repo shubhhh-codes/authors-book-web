@@ -90,28 +90,28 @@ function AccordionItem({
   const headingId = `accordion-heading-${index}`;
 
   return (
-    <div className="border-b border-gray-200 last:border-b-0">
+    <div className="border-b border-[var(--hairline)] last:border-b-0">
       <h3 id={headingId}>
         <button
           type="button"
           aria-expanded={isOpen}
           aria-controls={panelId}
           onClick={onToggle}
-          className="w-full flex items-center justify-between py-5 px-2 text-left text-sm sm:text-base font-semibold text-gray-900 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 rounded transition-colors"
+          className="w-full flex items-center justify-between py-5 px-2 text-left text-base sm:text-lg font-normal text-[var(--ink)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink)] focus-visible:ring-offset-2 rounded transition-colors font-[family-name:var(--serif)]"
           id={headingId}
         >
           <span className="flex items-center gap-3">
             {/* check_mark icon — mirrors icon: "check_mark" from schema */}
             <svg
-              width="18"
-              height="18"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.5"
+              strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-gray-500 flex-shrink-0"
+              className="text-[var(--ink-soft)] flex-shrink-0"
               aria-hidden="true"
             >
               <polyline points="20 6 9 17 4 12" />
@@ -121,8 +121,8 @@ function AccordionItem({
 
           {/* Chevron */}
           <svg
-            width="18"
-            height="18"
+            width="16"
+            height="16"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -144,12 +144,12 @@ function AccordionItem({
         className={`accordion-content ${isOpen ? 'open' : ''}`}
       >
         <div
-          className="px-2 pb-5 pt-1 text-sm sm:text-base text-gray-700 leading-relaxed prose prose-sm max-w-none
-            [&_h3]:font-bold [&_h3]:text-gray-900 [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-base
-            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1
-            [&_li]:text-gray-600
-            [&_strong]:text-gray-900
-            [&_p]:mb-3"
+          className="px-2 pb-6 pt-1 text-sm sm:text-base text-[var(--ink)] leading-relaxed prose prose-sm max-w-none font-[family-name:var(--serif)]
+            [&_h3]:font-normal [&_h3]:text-[var(--ink)] [&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-base [&_h3]:uppercase [&_h3]:tracking-wider [&_h3]:font-[family-name:var(--sans)] [&_h3]:text-[9px] [&_h3]:text-[var(--ink-soft)]
+            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:my-3
+            [&_li]:text-[var(--ink-soft)]
+            [&_strong]:text-[var(--ink)] [&_strong]:font-semibold
+            [&_p]:mb-4"
           dangerouslySetInnerHTML={{ __html: row.content }}
         />
       </div>
@@ -166,22 +166,26 @@ export default function AccordionSection() {
   return (
     <section
       id="contact"
-      className="py-12 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto"
+      className="py-16 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto font-[family-name:var(--serif)] bg-[var(--paper)]"
       aria-labelledby="accordion-section-heading"
     >
       {/* Section heading — mirrors collapsible-content heading: "Miscellaneous Points" */}
-      <div className="text-center mb-10">
+      <div className="text-center mb-12">
+        <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--ink-soft)] mb-3 font-[family-name:var(--sans)]">
+          Information
+        </p>
         <h2
           id="accordion-section-heading"
-          className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-gray-900"
+          className="text-3xl sm:text-4xl font-normal tracking-tight uppercase text-[var(--ink)]"
         >
           Miscellaneous Points
         </h2>
+        <div className="w-16 h-px bg-[var(--hairline)] mx-auto mt-6" aria-hidden="true" />
       </div>
 
       {/* Accordion list */}
       <div
-        className="max-w-3xl mx-auto bg-white border border-gray-200 rounded-2xl px-4 sm:px-8 divide-y-0"
+        className="max-w-3xl mx-auto bg-[var(--paper-light)] border border-[var(--hairline)] rounded-2xl px-4 sm:px-8 divide-y-0"
         role="list"
       >
         {ACCORDION_ROWS.map((row, i) => (
