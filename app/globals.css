@@ -379,11 +379,10 @@ canvas:focus-visible {
 
 .browse-caption {
   position: absolute;
-  z-index: 16;
   bottom: clamp(178px, 23vh, 228px);
   left: clamp(24px, 5.4vw, 92px);
   width: min(430px, 36vw);
-  isolation: isolate;
+  padding-left: 60px;
   pointer-events: none;
   transition:
     opacity 420ms ease,
@@ -392,7 +391,7 @@ canvas:focus-visible {
 
 .browse-caption::before {
   position: absolute;
-  z-index: -1;
+  z-index: 12;
   top: -42px;
   right: -72px;
   bottom: -38px;
@@ -400,11 +399,19 @@ canvas:focus-visible {
   content: "";
   background: linear-gradient(
     90deg,
-    rgba(238, 232, 219, 0.96) 0%,
-    rgba(238, 232, 219, 0.82) 58%,
+    rgba(238, 232, 219, 0.98) 0%,
+    rgba(238, 232, 219, 0.96) 35%,
+    rgba(238, 232, 219, 0.85) 60%,
+    rgba(238, 232, 219, 0.5) 80%,
+    rgba(238, 232, 219, 0.15) 92%,
     rgba(238, 232, 219, 0) 100%
   );
   pointer-events: none;
+}
+
+.browse-caption > * {
+  position: relative;
+  z-index: 20;
 }
 
 .is-focused .browse-caption {
@@ -679,7 +686,7 @@ canvas:focus-visible {
   inset: 0;
   content: "";
   background:
-    linear-gradient(90deg, rgba(238, 232, 219, 0), rgba(238, 232, 219, 0.82) 10%, var(--paper) 24%),
+    linear-gradient(90deg, rgba(238, 232, 219, 0) 0%, rgba(238, 232, 219, 0.6) 12%, var(--paper) 30%),
     var(--paper);
 }
 
@@ -695,6 +702,8 @@ canvas:focus-visible {
   height: 100%;
   padding: 27px clamp(28px, 4vw, 68px) 30px clamp(52px, 6vw, 98px);
   border-left: 1px solid rgba(37, 35, 31, 0.08);
+  position: relative;
+  z-index: 20;
 }
 
 .back-button {
@@ -1108,16 +1117,25 @@ canvas:focus-visible {
     left: 0;
     width: auto;
     padding: 52px 20px 19px;
-    background: linear-gradient(
-      180deg,
-      rgba(238, 232, 219, 0),
-      rgba(238, 232, 219, 0.96) 45px,
-      var(--paper) 64px
-    );
+    background: transparent;
   }
 
   .browse-caption::before {
-    display: none;
+    display: block;
+    z-index: 12;
+    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(238, 232, 219, 0) 0%,
+      rgba(238, 232, 219, 0.3) 30%,
+      rgba(238, 232, 219, 0.7) 60%,
+      rgba(238, 232, 219, 0.92) 85%,
+      var(--paper) 100%
+    );
   }
 
   .browse-caption h1 {
@@ -1184,13 +1202,15 @@ canvas:focus-visible {
     height: min(49dvh, 500px);
     opacity: 0;
     transform: translateY(100%);
+    z-index: 22;
   }
 
   .book-details::before {
     top: -55px;
     background:
-      linear-gradient(180deg, rgba(238, 232, 219, 0), rgba(238, 232, 219, 0.94) 54px, var(--paper) 55px),
+      linear-gradient(180deg, rgba(238, 232, 219, 0) 0%, var(--paper) 100%),
       var(--paper);
+    z-index: -1;
   }
 
   .is-focused .book-details {
@@ -1202,8 +1222,11 @@ canvas:focus-visible {
     grid-template-columns: 1fr auto;
     grid-template-rows: auto minmax(0, 1fr) auto;
     padding: 9px 20px max(14px, env(safe-area-inset-bottom));
-    border-top: 1px solid rgba(37, 35, 31, 0.08);
+    border-top: 1px solid;
+    border-image: linear-gradient(to right, rgba(37, 35, 31, 0.08) 0%, rgba(37, 35, 31, 0.04) 50%, rgba(37, 35, 31, 0) 90%) 1;
     border-left: 0;
+    position: relative;
+    z-index: 20;
   }
 
   .back-button {
