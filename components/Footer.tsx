@@ -23,7 +23,7 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="bg-[#111111] text-white mt-auto" role="contentinfo">
+    <footer className="bg-[var(--paper-deep)] text-[var(--ink)] mt-auto font-[family-name:var(--sans)] border-t border-[var(--hairline)]" role="contentinfo">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-14">
         {/* Top grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
@@ -31,23 +31,23 @@ export default function Footer() {
           <div className="lg:col-span-1">
             <Link
               href="/"
-              className="text-2xl font-bold tracking-tight text-white hover:text-gray-300 transition-colors"
+              className="text-2xl font-normal tracking-tight text-[var(--ink)] hover:text-[var(--accent)] transition-colors font-[family-name:var(--serif)]"
               aria-label="Authors Book – Home"
             >
               authorsbook
             </Link>
-            <p className="mt-4 text-sm text-gray-400 leading-relaxed max-w-xs">
+            <p className="mt-4 text-sm text-[var(--ink-soft)] leading-relaxed max-w-xs font-[family-name:var(--serif)] italic">
               Curated books and premium handcrafted bookmarks for readers who love
               stories. Fill your shelves and your mind.
             </p>
 
             {/* Contact — verbatim from collapsible_row_7K7a7f */}
-            <address className="mt-6 not-italic text-sm text-gray-400 space-y-2">
+            <address className="mt-6 not-italic text-sm text-[var(--ink-soft)] space-y-2 font-[family-name:var(--serif)]">
               <p>
                 📧{' '}
                 <a
                   href="mailto:authorsbook01@gmail.com"
-                  className="hover:text-white transition-colors"
+                  className="hover:text-[var(--ink)] transition-colors"
                 >
                   authorsbook01@gmail.com
                 </a>
@@ -56,12 +56,12 @@ export default function Footer() {
                 📞{' '}
                 <a
                   href="tel:+919265795380"
-                  className="hover:text-white transition-colors"
+                  className="hover:text-[var(--ink)] transition-colors font-[family-name:var(--sans)] text-xs font-semibold tracking-wider"
                 >
                   +91 9265795380
                 </a>
               </p>
-              <p className="text-gray-500 text-xs">
+              <p className="text-[var(--ink-soft)]/70 text-[9px] font-semibold uppercase tracking-widest font-[family-name:var(--sans)]">
                 Mon – Sat &nbsp;|&nbsp; 10:00 AM – 6:00 PM IST
               </p>
             </address>
@@ -69,7 +69,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
+            <h3 className="text-[9px] font-semibold uppercase tracking-widest text-[var(--ink-soft)] mb-4 font-[family-name:var(--sans)]">
               Quick Links
             </h3>
             <ul className="space-y-3 list-none" role="list">
@@ -77,7 +77,7 @@ export default function Footer() {
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="text-sm text-gray-400 hover:text-white transition-colors"
+                    className="text-sm text-[var(--ink)] hover:text-[var(--accent)] transition-colors font-[family-name:var(--serif)]"
                   >
                     {l.label}
                   </Link>
@@ -88,7 +88,7 @@ export default function Footer() {
 
           {/* Collections */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
+            <h3 className="text-[9px] font-semibold uppercase tracking-widest text-[var(--ink-soft)] mb-4 font-[family-name:var(--sans)]">
               Collections
             </h3>
             <ul className="space-y-3 list-none" role="list">
@@ -96,7 +96,7 @@ export default function Footer() {
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="text-sm text-gray-400 hover:text-white transition-colors"
+                    className="text-sm text-[var(--ink)] hover:text-[var(--accent)] transition-colors font-[family-name:var(--serif)]"
                   >
                     {l.label}
                   </Link>
@@ -107,7 +107,7 @@ export default function Footer() {
 
           {/* Policies */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
+            <h3 className="text-[9px] font-semibold uppercase tracking-widest text-[var(--ink-soft)] mb-4 font-[family-name:var(--sans)]">
               Policies
             </h3>
             <ul className="space-y-3 list-none" role="list">
@@ -115,7 +115,7 @@ export default function Footer() {
                 <li key={l.label}>
                   <Link
                     href={l.href}
-                    className="text-sm text-gray-400 hover:text-white transition-colors"
+                    className="text-sm text-[var(--ink)] hover:text-[var(--accent)] transition-colors font-[family-name:var(--serif)]"
                   >
                     {l.label}
                   </Link>
@@ -126,11 +126,11 @@ export default function Footer() {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-white/10 mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-gray-500">
+        <div className="border-t border-[var(--hairline)] mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--ink-soft)] font-[family-name:var(--sans)]">
             © {year} Authors Book. All rights reserved.
           </p>
-          <p className="text-xs text-gray-600">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--ink-soft)] font-[family-name:var(--sans)]">
             Made with ❤️ for book lovers
           </p>
         </div>
