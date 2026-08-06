@@ -52,6 +52,7 @@ export default function ShelfPage({ initialSlug }: ShelfPageProps = {}) {
       */}
       <div className={`transition-opacity duration-300 ${isFocused ? "opacity-0 pointer-events-none invisible" : "opacity-100 pointer-events-auto visible"}`}>
         <main id="main-content" className="relative z-30 bg-[var(--paper)]">
+          <div className="w-full h-px bg-[var(--hairline)]" aria-hidden="true" />
           <EditorialShowcase onOpenCart={() => setIsCartOpen(true)} />
           <div className="w-full h-px bg-[var(--hairline)]" aria-hidden="true" />
           <AboutUs />
