@@ -14,27 +14,38 @@ export async function POST(request: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Ensure public/uploads directory exists
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    await mkdir(uploadsDir, { recursive: true });
+    // Try writing to public/uploads (local dev). Fallback to Data URI on Vercel serverless functions.
+    try {
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      await mkdir(uploadsDir, { recursive: true });
 
-    // Generate unique filename with timestamp
-    const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_').toLowerCase();
-    const ext = path.extname(originalName) || '.webp';
-    const baseName = path.basename(originalName, ext);
-    const filename = `product-${Date.now()}-${baseName}${ext.endsWith('.webp') ? '.webp' : ext}`;
-    
-    const filePath = path.join(uploadsDir, filename);
-    await writeFile(filePath, buffer);
+      const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_').toLowerCase();
+      const ext = path.extname(originalName) || '.webp';
+      const baseName = path.basename(originalName, ext);
+      const filename = `product-${Date.now()}-${baseName}${ext.endsWith('.webp') ? '.webp' : ext}`;
+      
+      const filePath = path.join(uploadsDir, filename);
+      await writeFile(filePath, buffer);
 
-    const publicUrl = `/uploads/${filename}`;
+      return NextResponse.json({
+        success: true,
+        url: `/uploads/${filename}`,
+        filename,
+        size: file.size,
+      });
+    } catch (fsError) {
+      console.warn('Filesystem write not available (Vercel serverless mode). Returning optimized Data URI:', fsError);
+      const base64 = buffer.toString('base64');
+      const mimeType = file.type || 'image/webp';
+      const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    return NextResponse.json({
-      success: true,
-      url: publicUrl,
-      filename,
-      size: file.size,
-    });
+      return NextResponse.json({
+        success: true,
+        url: dataUrl,
+        isDataUri: true,
+        size: file.size,
+      });
+    }
   } catch (error) {
     console.error('File upload error:', error);
     return NextResponse.json(

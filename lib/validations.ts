@@ -218,8 +218,10 @@ export function escapeRegex(str: string): string {
 /** Extract a safe error message from an unknown catch value */
 export function getSafeErrorMessage(error: unknown): string {
   if (error instanceof Error) {
-    if (error.message.includes('Validation failed')) return error.message;
-    return 'An unexpected error occurred';
+    if (error.message.includes('E11000') || error.message.includes('duplicate key')) {
+      return 'A product with a similar title or handle already exists.';
+    }
+    return error.message;
   }
   return 'An unexpected error occurred';
 }

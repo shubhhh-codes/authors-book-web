@@ -84,7 +84,7 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
     setError(null);
 
     try {
-      // Compress to WebP in browser
+      // Compress to WebP in browser canvas (max 1000px, 0.8 quality)
       const webpBlob = await processAndCompressToWebP(rawFile);
       const webpFile = new File([webpBlob], rawFile.name.replace(/\.[^/.]+$/, '') + '.webp', {
         type: 'image/webp',
@@ -93,17 +93,29 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
       const formData = new FormData();
       formData.append('file', webpFile);
 
-      const res = await fetch('/api/admin/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      try {
+        const res = await fetch('/api/admin/upload', {
+          method: 'POST',
+          body: formData,
+        });
 
-      const data = await res.json();
-      if (res.ok && data.url) {
-        onChange(data.url);
-      } else {
-        setError(data.error || 'Upload failed');
+        const data = await res.json();
+        if (res.ok && data.url) {
+          onChange(data.url);
+          return;
+        }
+      } catch {
+        // Network or API route error
       }
+
+      // Client-side fallback to Base64 Data URI if API fails or serverless rejects
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          onChange(reader.result);
+        }
+      };
+      reader.readAsDataURL(webpBlob);
     } catch (err) {
       console.error('Image upload error:', err);
       setError('Failed to process and upload image');
@@ -135,6 +147,8 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
       uploadFile(e.target.files[0]);
     }
   };
+
+  const isDataUri = value?.startsWith('data:');
 
   return (
     <div className="space-y-3">
@@ -200,8 +214,12 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
                 <Image src={value} alt="Product cover" fill className="object-cover" unoptimized />
               </div>
               <div className="flex-1 min-w-0 space-y-1">
-                <p className="text-xs font-bold text-gray-900 truncate">{value}</p>
-                <p className="text-[11px] text-gray-500">Image uploaded to /uploads in WebP format.</p>
+                <p className="text-xs font-bold text-gray-900 truncate">
+                  {isDataUri ? '⚡ WebP Compressed Image (Base64)' : value}
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  {isDataUri ? 'Stored directly in database as optimized WebP.' : 'Uploaded to /uploads in WebP format.'}
+                </p>
                 <div className="pt-2 flex items-center gap-2">
                   <button
                     type="button"

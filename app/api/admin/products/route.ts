@@ -20,14 +20,21 @@ export async function POST(request: Request): Promise<Response> {
     await connectDB();
     const data = await parseRequestBody(request, AdminProductCreateSchema);
 
-    const handle = data.title
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+    const baseHandle =
+      data.title
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || `product-${Date.now()}`;
+
+    let handle = baseHandle;
+    let counter = 1;
+    while (await Product.exists({ handle })) {
+      handle = `${baseHandle}-${counter++}`;
+    }
 
     const newProduct = await Product.create({
-      handle: handle || `product-${Date.now()}`,
+      handle,
       title: data.title,
       description: data.description,
       price: data.price,
