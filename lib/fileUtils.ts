@@ -11,7 +11,7 @@ export async function deleteLocalImages(images?: Array<{ url?: string } | string
     const url = typeof img === 'string' ? img : img?.url;
     if (url && url.startsWith('/uploads/')) {
       try {
-        const filename = url.replace(/^\/uploads\//, '');
+        const filename = path.basename(url.replace(/^\/uploads\//, ''));
         const filePath = path.join(process.cwd(), 'public', 'uploads', filename);
         await unlink(filePath);
       } catch {

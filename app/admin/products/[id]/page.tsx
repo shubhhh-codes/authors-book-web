@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import ImageUploader from '@/components/ImageUploader';
+import RichTextEditor from '@/components/RichTextEditor';
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -205,11 +206,10 @@ export default function EditProductPage() {
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Description (HTML / Text)</label>
-              <textarea
-                rows={6}
+              <RichTextEditor
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black text-xs leading-relaxed"
+                onChange={(val) => setFormData({ ...formData, description: val })}
+                placeholder="Write book description, blurb, format details... Use <mark> to highlight text!"
               />
             </div>
           </div>

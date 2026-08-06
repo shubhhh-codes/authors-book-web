@@ -42,6 +42,6 @@ ProductSchema.index({ genre: 1 });
 ProductSchema.index({ type: 1 });
 ProductSchema.index({ tags: 1 });
 ProductSchema.index({ handle: 1 }, { unique: true, sparse: true });
-ProductSchema.index({ title: 'text', description: 'text' }); // Full-text search index
+ProductSchema.index({ title: 'text', description: 'text' }, { language_override: 'none' }); // Full-text search index
 
 export default mongoose.models.Product || mongoose.model('Product', ProductSchema);

@@ -115,7 +115,7 @@ async function runSeed() {
             material: row['Material'] || '',
             targetAudience: row['Target audience'] || '',
             genre: row['Genre'] || '',
-            language: row['Language version'] || '',
+            language: row['Language version'] || undefined,
           };
         }
 

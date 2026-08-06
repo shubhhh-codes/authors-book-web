@@ -35,6 +35,10 @@ export async function PUT(
       }
     }
 
+    if (updateData.language === '') {
+      delete updateData.language;
+    }
+
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true });
 
     if (!updatedProduct) {

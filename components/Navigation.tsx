@@ -6,7 +6,7 @@ import AnnouncementBar from '@/components/AnnouncementBar';
 import SearchModal from '@/components/SearchModal';
 import CartDrawer from '@/components/CartDrawer';
 
-export default function Navigation() {
+export default function Navigation({ showAnnouncement = true }: { showAnnouncement?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [cartCount, setCartCount] = useState(0);
@@ -45,7 +45,7 @@ export default function Navigation() {
   return (
     <>
       {/* Top Announcement Bar */}
-      <AnnouncementBar />
+      {showAnnouncement && <AnnouncementBar />}
 
       {/* Primary Sticky Header */}
       <nav
