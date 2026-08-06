@@ -631,7 +631,7 @@ export function createBackCover(book: CatalogBook) {
   ctx.font = `italic 500 54px ${serif}`;
   wrapText(
     ctx,
-    `“${book.quote}”`,
+    `${book.quote}`,
     108,
     180 + lines * 58 + 132,
     808,
@@ -640,13 +640,13 @@ export function createBackCover(book: CatalogBook) {
   );
   ctx.font = `600 24px ${sans}`;
   ctx.letterSpacing = "2px";
-  ctx.fillText(book.quoteBy.toUpperCase(), 110, 1160);
+  ctx.fillText(`~ ${book.quoteBy.toUpperCase()}`, 110, 1160);
 
   ctx.globalAlpha = 0.78;
   ctx.font = `500 20px ${sans}`;
   ctx.letterSpacing = "3px";
   ctx.fillText(
-    `${siteConfig.coverImprint} · ${siteConfig.coverTagline}`,
+    `${siteConfig.coverImprint}`,
     110,
     1380,
   );

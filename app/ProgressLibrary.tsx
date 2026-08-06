@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { catalog, findBookIndexBySlug } from "./catalog";
 import { ShelfEngine, type ShelfMode } from "./ShelfEngine";
 import { siteConfig } from "./site-config";
-import { div } from "three/tsl";
 
 function ArrowIcon({ direction }: { direction: "left" | "right" }) {
   return (
@@ -37,18 +36,47 @@ interface ProgressLibraryProps {
 export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<ShelfEngine | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [mode, setMode] = useState<ShelfMode>("browse");
-  const [ready, setReady] = useState(false);
-  const [status, setStatus] = useState("Preparing the complete catalog");
 
+  // Deep-link boot: when initialSlug is present, pre-seed React state so the
+  // very first paint renders in inspection mode (CSS class "is-focused",
+  // details panel visible, browse caption hidden, no preloader).
+  const isDeepLink = Boolean(initialSlug);
+  const deepLinkIdx = initialSlug ? findBookIndexBySlug(initialSlug) : -1;
+
+  const [activeIndex, setActiveIndex] = useState(
+    deepLinkIdx !== -1 ? deepLinkIdx : 0,
+  );
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(
+    deepLinkIdx !== -1 ? deepLinkIdx : null,
+  );
+  const [mode, setMode] = useState<ShelfMode>(
+    isDeepLink ? "inspect" : "browse",
+  );
+  const [ready, setReady] = useState(isDeepLink);
+
+  useEffect(() => {
+    if (!isDeepLink && typeof window !== "undefined" && sessionStorage.getItem("shelf-ready") === "1") {
+      setReady(true);
+    }
+  }, [isDeepLink]);
+  const [status, setStatus] = useState(
+    isDeepLink ? "Loading volume" : "Preparing the complete catalog",
+  );
   const activeBook = catalog[activeIndex];
   const selectedBook = useMemo(
     () => (selectedIndex === null ? null : catalog[selectedIndex]),
     [selectedIndex],
   );
   const isFocused = mode !== "browse";
+
+  const handleScroll = (e: React.UIEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    if (maxScroll > 0) {
+      const progress = el.scrollTop / maxScroll;
+      engineRef.current?.setDetailScrollProgress(progress);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -72,37 +100,55 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
               const bookSlug = catalog[index].id;
               const targetPath = `/book/${bookSlug}`;
               if (window.location.pathname !== targetPath) {
-                // If already on a book URL (arrow navigation between books),
-                // use replaceState so back button always goes to "/", not another book.
-                // Only pushState when first entering from browse mode ("/").
-                const isEnteringFocus = !window.location.pathname.startsWith("/book/");
-                if (isEnteringFocus) {
-                  window.history.pushState({ bookSlug }, "", targetPath);
-                } else {
-                  window.history.replaceState({ bookSlug }, "", targetPath);
-                }
+                // Always use replaceState — never pushState.  pushState creates
+                // a history entry that crosses Next.js route boundaries
+                // ("/" ↔ "/book/[slug]").  When the user presses Back, both our
+                // popstate handler AND Next.js's internal handler fire, causing
+                // a full component remount + engine rebuild + preloader flash.
+                // replaceState updates the URL without adding a history entry,
+                // so the Back button goes to the previous site/page instead.
+                window.history.replaceState({ bookSlug }, "", targetPath);
               }
             } else if (!isFocusedNow) {
-              // Return to homepage — pop the book entry off history cleanly.
+              // Return to homepage — replace current history entry so the
+              // back button takes the user to whatever was before the shelf,
+              // not to another /book/* URL.
               if (window.location.pathname !== "/") {
-                window.history.pushState({ bookSlug: null }, "", "/");
+                window.history.replaceState({ bookSlug: null }, "", "/");
               }
             }
           }
         },
         onStatus: setStatus,
+        // onReady fires synchronously inside the ShelfEngine constructor,
+        // BEFORE the `engine = new ShelfEngine(...)` assignment completes.
+        // So we only mark the UI as ready here; the actual focusBook call
+        // happens below, after the engine reference is fully assigned.
         onReady: () => {
           setReady(true);
-          const targetSlug = initialSlug || getSlugFromLocation();
-          if (targetSlug) {
-            const initialIdx = findBookIndexBySlug(targetSlug);
-            if (initialIdx !== -1) {
-              engine?.focusBook(initialIdx);
-            }
+          // Mark this tab as having booted the shelf so that future navigations
+          // back to "/" (e.g., from a product page) skip the branded preloader.
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("shelf-ready", "1");
           }
         },
       });
       engineRef.current = engine;
+
+      // Deep-link: use focusBookInstant to skip ALL animation and place the
+      // engine directly into inspect mode on the first rendered frame.
+      // Regular navigation: use focusBook for the animated transition.
+      const targetSlug = initialSlug || getSlugFromLocation();
+      if (targetSlug) {
+        const initialIdx = findBookIndexBySlug(targetSlug);
+        if (initialIdx !== -1) {
+          if (isDeepLink) {
+            engine.focusBookInstant(initialIdx);
+          } else {
+            engine.focusBook(initialIdx);
+          }
+        }
+      }
     }
 
     void start();
@@ -113,22 +159,10 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
     };
   }, [initialSlug]);
 
-  useEffect(() => {
-    function handlePopState() {
-      // Desired behaviour: pressing Back from any book inspection always
-      // returns to the shelf browse mode — never navigates between books.
-      // Arrow-book navigation uses replaceState so there is only one history
-      // entry per "inspect session"; popping it should always mean "go home".
-      if (engineRef.current) {
-        engineRef.current.returnToShelf();
-      }
-      // If the popped URL is "/", we're already done.
-      // If it's another book slug (deep-link session), also return to shelf.
-    }
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  // NOTE: The popstate listener was intentionally removed.
+  // We use replaceState exclusively (never pushState), so no popstate events
+  // are generated by our navigation.  The "Return to Shelf" button and
+  // Escape key are the primary mechanisms to exit inspection mode.
 
   return (
     <main
@@ -239,6 +273,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
         aria-hidden={!isFocused}
         aria-label={selectedBook ? `Details for ${selectedBook.title}` : "Book details"}
         data-testid="book-details"
+        onScroll={handleScroll}
       >
         {selectedBook ? (
           <div className="book-details__inner">
@@ -275,7 +310,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
               </button>
             </div>
 
-            <div key={selectedBook.id} className="book-details__copy">
+            <div key={selectedBook.id} className="book-details__copy" onScroll={handleScroll}>
               <p className="eyebrow">{siteConfig.editionEyebrow}</p>
               <h2>{selectedBook.title}</h2>
               <p className="book-details__author">{selectedBook.author}</p>
@@ -311,18 +346,18 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
                 </span>
                 <span aria-hidden="true">↗</span>
               </a>
-            </div>
 
-            <div className="focus-controls" aria-label="Inspection controls">
-              <span>Drag to orbit</span>
-              <span>Pinch or scroll to zoom</span>
-              <button
-                type="button"
-                data-testid="reset-view"
-                onClick={() => engineRef.current?.resetFocusView()}
-              >
-                Reset view
-              </button>
+              <div className="focus-controls" aria-label="Inspection controls">
+                <span>Drag to orbit</span>
+                <span>Pinch or scroll to zoom</span>
+                <button
+                  type="button"
+                  data-testid="reset-view"
+                  onClick={() => engineRef.current?.resetFocusView()}
+                >
+                  Reset view
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
@@ -338,32 +373,38 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
         <span>{status}</span>
       </div>
 
-      <div className="loading-screen" aria-hidden={ready}>
-        <div className="bookshelf-loader" aria-hidden="true">
-          <div className="bookshelf-loader__books">
-            <div className="book-spine book-spine--1">
-              <i className="book-spine__stripe" />
+      {/* Preloader: only shown on homepage (browse mode boot).
+          Deep-link routes skip the branded splash entirely. */}
+      {!isDeepLink && (
+        <>
+          <div className="loading-screen" aria-hidden={ready}>
+            <div className="bookshelf-loader" aria-hidden="true">
+              <div className="bookshelf-loader__books">
+                <div className="book-spine book-spine--1">
+                  <i className="book-spine__stripe" />
+                </div>
+                <div className="book-spine book-spine--2">
+                  <i className="book-spine__stripe" />
+                  <div className="book-spine__bookmark" />
+                </div>
+                <div className="book-spine book-spine--3">
+                  <i className="book-spine__stripe" />
+                </div>
+                <div className="book-spine book-spine--4">
+                  <i className="book-spine__stripe" />
+                </div>
+                <div className="book-spine book-spine--5">
+                  <i className="book-spine__stripe" />
+                </div>
+              </div>
+              <div className="bookshelf-loader__shelf" />
             </div>
-            <div className="book-spine book-spine--2">
-              <i className="book-spine__stripe" />
-              <div className="book-spine__bookmark" />
-            </div>
-            <div className="book-spine book-spine--3">
-              <i className="book-spine__stripe" />
-            </div>
-            <div className="book-spine book-spine--4">
-              <i className="book-spine__stripe" />
-            </div>
-            <div className="book-spine book-spine--5">
-              <i className="book-spine__stripe" />
-            </div>
+            <p className="loading-screen__branding">Authors Book &amp; Bookmarks</p>
           </div>
-          <div className="bookshelf-loader__shelf" />
-        </div>
-        <p className="loading-screen__branding">Authors Book &amp; Bookmarks</p>
-      </div>
 
-      <div className="curtain-layer" aria-hidden={ready} />
+          <div className="curtain-layer" aria-hidden={ready} />
+        </>
+      )}
 
       <div className="sr-only" aria-live="polite">
         {isFocused && selectedBook
