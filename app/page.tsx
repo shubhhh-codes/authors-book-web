@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Root home page — Server Component so metadata is server-rendered.
+ * Renders the shared ShelfPage client component with no initial book focus.
+ */
 export default function Home() {
-  return null;
+  return <ShelfPage />;
 }

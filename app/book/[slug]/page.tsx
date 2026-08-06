@@ -52,8 +52,9 @@ export async function generateMetadata({ params }: BookPageProps): Promise<Metad
  */
 export default async function BookPage({ params }: BookPageProps) {
   const { slug } = await params;
+  // 404 for completely unknown slugs so crawlers and users get the right signal.
   if (findBookIndexBySlug(slug) === -1) {
     notFound();
   }
-  return null;
+  return <ShelfPage initialSlug={slug} />;
 }

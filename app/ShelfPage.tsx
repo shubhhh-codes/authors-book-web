@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
 import { ProgressLibrary } from "./ProgressLibrary";
 import EditorialShowcase from "@/components/EditorialShowcase";
 import AboutUs from "@/components/AboutUs";
@@ -13,10 +12,14 @@ interface ShelfPageProps {
   initialSlug?: string;
 }
 
-export default function ShelfPage({ initialSlug: propSlug }: ShelfPageProps = {}) {
-  const pathname = usePathname();
-  const initialSlug = propSlug ?? (pathname?.startsWith("/book/") ? pathname.replace("/book/", "") : undefined);
-  const [isFocused, setIsFocused] = useState(Boolean(initialSlug));
+/**
+ * Shared client component rendered by both the root page (/) and the
+ * book deep-link page (/book/[slug]).  Keeping it in one place guarantees
+ * the 3D canvas, showcase images, and all page sections are never
+ * re-created when the URL changes between the two routes.
+ */
+export default function ShelfPage({ initialSlug }: ShelfPageProps = {}) {
+  const [isFocused, setIsFocused] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
