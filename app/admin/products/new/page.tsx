@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ImageUploader from '@/components/ImageUploader';
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -24,7 +25,30 @@ export default function NewProductPage() {
     quantity: '10',
     imageUrl: '',
     published: true,
+    material: '',
+    color: '',
+    bookmarkShape: '',
+    targetAudience: '',
+    language: '',
+    seoTitle: '',
+    seoDescription: '',
   });
+
+  const toggleTag = (tagToToggle: string) => {
+    const currentTags = formData.tags
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    const exists = currentTags.some((t) => t.toLowerCase() === tagToToggle.toLowerCase());
+    let nextTags: string[];
+    if (exists) {
+      nextTags = currentTags.filter((t) => t.toLowerCase() !== tagToToggle.toLowerCase());
+    } else {
+      nextTags = [...currentTags, tagToToggle];
+    }
+    setFormData({ ...formData, tags: nextTags.join(', ') });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,18 +176,37 @@ export default function NewProductPage() {
 
           {/* Media */}
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-2xs space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Product Image</h2>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Product Cover Image</h2>
+            <ImageUploader
+              value={formData.imageUrl}
+              onChange={(url) => setFormData({ ...formData, imageUrl: url })}
+            />
+          </div>
+
+          {/* SEO Section */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-2xs space-y-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Search Engine Optimization (SEO)</h2>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Image URL</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">SEO Title</label>
               <input
-                type="url"
-                placeholder="https://images.unsplash.com/... or /images/..."
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black text-xs"
+                type="text"
+                placeholder="Title tag for search results"
+                value={formData.seoTitle}
+                onChange={(e) => setFormData({ ...formData, seoTitle: e.target.value })}
+                className="w-full px-3.5 py-2 rounded-lg border border-gray-300 text-xs"
               />
-              <p className="text-[11px] text-gray-400 mt-1">Provide direct image link for cover photo.</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Meta Description</label>
+              <textarea
+                rows={3}
+                placeholder="Meta description for search engine previews..."
+                value={formData.seoDescription}
+                onChange={(e) => setFormData({ ...formData, seoDescription: e.target.value })}
+                className="w-full px-3.5 py-2 rounded-lg border border-gray-300 text-xs"
+              />
             </div>
           </div>
         </div>
@@ -189,14 +232,14 @@ export default function NewProductPage() {
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Product Organization</h2>
 
             <div>
-              <label className="block font-semibold text-gray-700 mb-1">Type</label>
+              <label className="block font-semibold text-gray-700 mb-1">Product Type</label>
               <select
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 font-semibold"
               >
-                <option value="book">Book</option>
-                <option value="bookmark">Bookmark</option>
+                <option value="book">Book 📖</option>
+                <option value="bookmark">Bookmark 🔖</option>
               </select>
             </div>
 
@@ -211,7 +254,7 @@ export default function NewProductPage() {
             </div>
 
             <div>
-              <label className="block font-semibold text-gray-700 mb-1">Genre</label>
+              <label className="block font-semibold text-gray-700 mb-1">Genre / Category</label>
               <input
                 type="text"
                 placeholder="Fiction, Romance, Non-Fiction..."
@@ -221,16 +264,111 @@ export default function NewProductPage() {
               />
             </div>
 
+            {/* Quick Collection Tag Chips */}
             <div>
-              <label className="block font-semibold text-gray-700 mb-1">Tags (comma separated)</label>
+              <label className="block font-semibold text-gray-700 mb-1.5">Collection Filter Tags</label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {[
+                  { tag: 'bestseller', label: 'Best Seller' },
+                  { tag: 'film', label: 'In Film' },
+                  { tag: '3d', label: '3D Bookmark' },
+                  { tag: 'iconic', label: 'Iconic Series' },
+                  { tag: 'featured', label: 'Featured' },
+                ].map(({ tag, label }) => {
+                  const isSelected = formData.tags
+                    .split(',')
+                    .map((t) => t.trim().toLowerCase())
+                    .includes(tag.toLowerCase());
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleTag(tag)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
+                        isSelected
+                          ? 'bg-black text-white shadow-2xs font-semibold'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                      }`}
+                    >
+                      {isSelected ? `✓ ${label}` : `+ ${label}`}
+                    </button>
+                  );
+                })}
+              </div>
+
               <input
                 type="text"
-                placeholder="adventure, best-seller, 3d, filmy"
+                placeholder="bestseller, film, 3d, iconic..."
                 value={formData.tags}
                 onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs"
               />
             </div>
+          </div>
+
+          {/* Specific Attributes for Bookmark or Book */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-2xs space-y-4 text-xs">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              {formData.type === 'bookmark' ? 'Bookmark Attributes' : 'Book Details'}
+            </h2>
+
+            {formData.type === 'bookmark' ? (
+              <>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Bookmark Shape</label>
+                  <input
+                    type="text"
+                    value={formData.bookmarkShape}
+                    onChange={(e) => setFormData({ ...formData, bookmarkShape: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                    placeholder="e.g. Rectangular, Ribbon, Standard"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Material</label>
+                  <input
+                    type="text"
+                    value={formData.material}
+                    onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                    placeholder="e.g. Brass Foil, Metal, Premium Card"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Color / Finish</label>
+                  <input
+                    type="text"
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                    placeholder="e.g. Gold Foil, Matte Black"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Language</label>
+                  <input
+                    type="text"
+                    value={formData.language}
+                    onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                    placeholder="e.g. English, Hindi"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Target Audience</label>
+                  <input
+                    type="text"
+                    value={formData.targetAudience}
+                    onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                    placeholder="e.g. Adults, Suitable for all ages"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Inventory */}
@@ -244,7 +382,7 @@ export default function NewProductPage() {
                 placeholder="SKU-1001"
                 value={formData.sku}
                 onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 font-mono"
               />
             </div>
 
@@ -254,7 +392,7 @@ export default function NewProductPage() {
                 type="number"
                 value={formData.quantity}
                 onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 font-bold"
               />
             </div>
           </div>

@@ -99,7 +99,7 @@ export const AdminProductCreateSchema = z.object({
   title: z.string().min(1, 'Product title is required'),
   description: z.string().optional().default(''),
   price: z.number({ coerce: true }).positive('Price must be positive'),
-  compareAtPrice: z.number({ coerce: true }).positive().optional(),
+  compareAtPrice: z.number({ coerce: true }).positive().optional().nullable(),
   vendor: z.string().optional().default('Authors Book'),
   category: z.string().optional().default('General'),
   type: z.string().optional().default('book'),
@@ -111,8 +111,15 @@ export const AdminProductCreateSchema = z.object({
   sku: z.string().optional(),
   weight: z.number({ coerce: true }).optional().default(0.3),
   quantity: z.number({ coerce: true }).int().nonnegative().optional().default(10),
-  images: z.array(z.string().url()).optional().default([]),
+  images: z.array(z.string()).optional().default([]),
   published: z.boolean().optional().default(true),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
+  bookmarkShape: z.string().optional(),
+  color: z.string().optional(),
+  material: z.string().optional(),
+  targetAudience: z.string().optional(),
+  language: z.string().optional(),
 });
 
 export type AdminProductCreate = z.infer<typeof AdminProductCreateSchema>;
@@ -134,9 +141,9 @@ export const AdminProductUpdateSchema = z.object({
   weight: z.number({ coerce: true }).optional(),
   inventory: z.object({
     quantity: z.number({ coerce: true }).int().nonnegative(),
-    policy: z.string(),
+    policy: z.string().optional().default('deny'),
   }).optional(),
-  images: z.array(z.string().url()).optional(),
+  images: z.array(z.string()).optional(),
   published: z.boolean().optional(),
   seoTitle: z.string().optional(),
   seoDescription: z.string().optional(),

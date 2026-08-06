@@ -49,6 +49,13 @@ export async function POST(request: Request): Promise<Response> {
         alt: data.title,
         position: pos + 1,
       })),
+      seoTitle: data.seoTitle,
+      seoDescription: data.seoDescription,
+      bookmarkShape: data.bookmarkShape,
+      color: data.color,
+      material: data.material,
+      targetAudience: data.targetAudience,
+      language: data.language,
     });
 
     return successResponse(

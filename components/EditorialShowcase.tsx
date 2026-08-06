@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Product, CartItem } from '@/lib/types';
@@ -15,6 +15,37 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
   const [activeTab, setActiveTab] = useState<'all' | 'books' | 'bookmarks'>('all');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [addedId, setAddedId] = useState<string | null>(null);
+
+  const tabNavRef = useRef<HTMLDivElement>(null);
+  const tabButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const [pillRect, setPillRect] = useState<{ left: number; width: number; isInitialized: boolean }>({
+    left: 0,
+    width: 0,
+    isInitialized: false,
+  });
+
+  const updatePill = useCallback(() => {
+    const activeBtn = tabButtonRefs.current[activeTab];
+    const navContainer = tabNavRef.current;
+    if (activeBtn && navContainer) {
+      const navBounds = navContainer.getBoundingClientRect();
+      const btnBounds = activeBtn.getBoundingClientRect();
+      setPillRect({
+        left: btnBounds.left - navBounds.left,
+        width: btnBounds.width,
+        isInitialized: true,
+      });
+    }
+  }, [activeTab]);
+
+  useLayoutEffect(() => {
+    updatePill();
+  }, [updatePill, products]);
+
+  useEffect(() => {
+    window.addEventListener('resize', updatePill);
+    return () => window.removeEventListener('resize', updatePill);
+  }, [updatePill]);
 
   useEffect(() => {
     async function fetchProducts() {
@@ -126,79 +157,82 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
           </p>
         </div>
 
-        {/* Category Tabs */}
+        {/* Category Tabs with Ultra-Smooth Concentric Spring Sliding Pill */}
         <div className="flex justify-center mb-8">
-          <div className="inline-flex p-1 bg-[var(--paper-light)] border border-[var(--hairline)] rounded-full text-xs font-[family-name:var(--sans)] shadow-2xs">
-            <button
-              type="button"
-              onClick={() => { setActiveTab('all'); setActiveFilter('all'); }}
-              style={
-                activeTab === 'all'
-                  ? { backgroundColor: 'var(--ink)', color: 'var(--paper-light)' }
-                  : { color: 'var(--ink-soft)' }
-              }
-              className={`px-5 py-2.5 rounded-full font-semibold uppercase tracking-wider transition-all duration-200 ${
-                activeTab === 'all' ? 'shadow-xs' : 'hover:text-[var(--ink)]'
+          <div
+            ref={tabNavRef}
+            className="relative inline-flex items-center p-1 bg-[var(--paper-light)] border border-[var(--hairline)] rounded-full text-xs font-[family-name:var(--sans)] shadow-2xs overflow-hidden"
+          >
+            {/* GPU-Accelerated Concentric Spring Sliding Pill */}
+            <div
+              aria-hidden="true"
+              className={`absolute top-1 bottom-1 left-0 rounded-full bg-[var(--ink)] shadow-sm pointer-events-none ${
+                pillRect.isInitialized
+                  ? 'transition-all duration-400 ease-[cubic-bezier(0.34,1.45,0.64,1)]'
+                  : 'opacity-0'
               }`}
-            >
-              All Items ({counts.all})
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('books'); setActiveFilter('all'); }}
-              style={
-                activeTab === 'books'
-                  ? { backgroundColor: 'var(--ink)', color: 'var(--paper-light)' }
-                  : { color: 'var(--ink-soft)' }
-              }
-              className={`px-5 py-2.5 rounded-full font-semibold uppercase tracking-wider transition-all duration-200 ${
-                activeTab === 'books' ? 'shadow-xs' : 'hover:text-[var(--ink)]'
-              }`}
-            >
-              Books ({counts.books})
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('bookmarks'); setActiveFilter('all'); }}
-              style={
-                activeTab === 'bookmarks'
-                  ? { backgroundColor: 'var(--ink)', color: 'var(--paper-light)' }
-                  : { color: 'var(--ink-soft)' }
-              }
-              className={`px-5 py-2.5 rounded-full font-semibold uppercase tracking-wider transition-all duration-200 ${
-                activeTab === 'bookmarks' ? 'shadow-xs' : 'hover:text-[var(--ink)]'
-              }`}
-            >
-              Bookmarks ({counts.bookmarks})
-            </button>
+              style={{
+                transform: `translate3d(${pillRect.left}px, 0, 0)`,
+                width: `${pillRect.width}px`,
+              }}
+            />
+
+            {(['all', 'books', 'bookmarks'] as const).map((tabKey) => {
+              const label =
+                tabKey === 'all'
+                  ? `All Items (${counts.all})`
+                  : tabKey === 'books'
+                  ? `Books (${counts.books})`
+                  : `Bookmarks (${counts.bookmarks})`;
+              const isTabActive = activeTab === tabKey;
+
+              return (
+                <button
+                  key={tabKey}
+                  ref={(el) => { tabButtonRefs.current[tabKey] = el; }}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tabKey);
+                    setActiveFilter('all');
+                  }}
+                  className={`relative z-10 px-5 sm:px-6 py-2.5 rounded-full font-semibold uppercase tracking-wider text-center transition-colors duration-300 active:scale-95 cursor-pointer select-none ${
+                    isTabActive
+                      ? 'text-[var(--paper-light)]'
+                      : 'text-[var(--ink-soft)] hover:text-[var(--ink)]'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Filter Chips */}
-        <div className="flex flex-wrap justify-center gap-2 mb-12 text-xs font-[family-name:var(--sans)]">
+        {/* Filter Chips with Fluid Elastic Hover & Press Physics */}
+        <div className="flex flex-wrap justify-center gap-3 mb-12 text-xs font-[family-name:var(--sans)]">
           {[
             { id: 'all', label: 'All Collections' },
             { id: 'bestseller', label: 'Best Sellers' },
             { id: 'film', label: 'Appeared in Films' },
             { id: '3d', label: '3D Bookmarks' },
             { id: 'iconic', label: 'Iconic Series' },
-          ].map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setActiveFilter(f.id)}
-              style={
-                activeFilter === f.id
-                  ? { backgroundColor: 'var(--ink)', borderColor: 'var(--ink)', color: 'var(--paper-light)' }
-                  : { backgroundColor: 'var(--paper-light)', borderColor: 'var(--hairline)', color: 'var(--ink-soft)' }
-              }
-              className={`px-4 py-1.5 rounded-full border transition-colors ${
-                activeFilter === f.id ? 'font-semibold' : 'hover:border-[var(--ink)]'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+          ].map((f) => {
+            const isActive = activeFilter === f.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setActiveFilter(f.id)}
+                className={`relative px-4.5 py-2 rounded-full border text-xs font-medium tracking-wide transition-all duration-350 ease-[cubic-bezier(0.34,1.4,0.64,1)] active:scale-90 cursor-pointer select-none ${
+                  isActive
+                    ? 'bg-[var(--ink)] border-[var(--ink)] text-[var(--paper-light)] shadow-[0_4px_14px_rgba(0,0,0,0.18)] font-semibold -translate-y-1 scale-105'
+                    : 'bg-[var(--paper-light)] border-[var(--hairline)] text-[var(--ink-soft)] hover:border-[var(--ink)] hover:text-[var(--ink)] hover:-translate-y-0.5 hover:shadow-xs'
+                }`}
+              >
+                {f.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Product Cards Grid */}
@@ -319,10 +353,10 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
         <div className="text-center mt-16">
           <Link
             href="/shop"
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-[var(--ink)] text-[var(--paper)] text-xs font-semibold uppercase tracking-widest rounded-full hover:bg-[var(--ink-soft)] transition-colors font-[family-name:var(--sans)] shadow-sm"
+            className="inline-flex items-center gap-2.5 px-8 py-3.5 bg-[var(--ink)] text-[var(--paper-light)] text-xs font-semibold uppercase tracking-widest rounded-full hover:bg-[var(--ink-soft)] hover:-translate-y-0.5 hover:shadow-md active:scale-95 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] font-[family-name:var(--sans)] shadow-sm"
           >
             <span>Browse Full Store Catalog</span>
-            <span aria-hidden="true">→</span>
+            <span aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1">→</span>
           </Link>
         </div>
       </div>
