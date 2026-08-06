@@ -6,11 +6,6 @@ try {
   dns.setDefaultResultOrder?.('ipv4first');
 } catch {}
 
-// Fallback DNS servers if system DNS fails SRV lookups
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
-} catch {}
-
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {

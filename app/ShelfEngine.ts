@@ -187,8 +187,12 @@ export class ShelfEngine {
   private pointerDown = false;
   private pointerId: number | null = null;
   private pointerStartX = 0;
+  private pointerStartY = 0;
   private pointerLastX = 0;
+  private pointerLastY = 0;
   private pointerTravel = 0;
+  private isAxisLocked = false;
+  private isVerticalScroll = false;
   private reducedMotion = false;
   private assetCount = 0;
   private assetFailures = 0;
@@ -620,20 +624,34 @@ export class ShelfEngine {
     window.addEventListener("blur", this.handleWindowBlur);
   }
 
+  private isPointerOverBookshelf(event: WheelEvent): boolean {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    this.pointer.set(x, y);
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+
+    const intersects = this.raycaster.intersectObjects(this.pickTargets, true);
+    return intersects.length > 0;
+  }
+
   private handleWheel = (event: WheelEvent) => {
     if (this.mode !== "browse") return;
-    event.preventDefault();
-    this.pendingFocusIndex = null;
-    const dominant =
-      Math.abs(event.deltaX) > Math.abs(event.deltaY)
-        ? event.deltaX
-        : event.deltaY;
-    this.targetScrollIndex = clamp(
-      this.targetScrollIndex + dominant * 0.0024,
-      0,
-      this.runtimeBooks.length - 1,
-    );
-    this.lastInputTime = performance.now();
+
+    const isOverBookshelf = this.isPointerOverBookshelf(event);
+
+    if (isOverBookshelf) {
+      event.preventDefault();
+      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      this.pendingFocusIndex = null;
+      this.targetScrollIndex = clamp(
+        this.targetScrollIndex + delta * 0.0024,
+        0,
+        this.runtimeBooks.length - 1,
+      );
+      this.lastInputTime = performance.now();
+    }
   };
 
   private handlePointerDown = (event: PointerEvent) => {
@@ -641,9 +659,17 @@ export class ShelfEngine {
     this.pointerDown = true;
     this.pointerId = event.pointerId;
     this.pointerStartX = event.clientX;
+    this.pointerStartY = event.clientY;
     this.pointerLastX = event.clientX;
+    this.pointerLastY = event.clientY;
     this.pointerTravel = 0;
-    this.canvas.setPointerCapture(event.pointerId);
+    this.isAxisLocked = false;
+    this.isVerticalScroll = false;
+    if (event.pointerType !== 'touch') {
+      try {
+        this.canvas.setPointerCapture(event.pointerId);
+      } catch {}
+    }
   };
 
   private handlePointerMove = (event: PointerEvent) => {
@@ -651,12 +677,41 @@ export class ShelfEngine {
     if (this.mode !== "browse") return;
 
     if (this.pointerDown && event.pointerId === this.pointerId) {
+      const deltaX = event.clientX - this.pointerLastX;
+      const deltaY = event.clientY - this.pointerLastY;
+      const totalX = Math.abs(event.clientX - this.pointerStartX);
+      const totalY = Math.abs(event.clientY - this.pointerStartY);
+
+      if (!this.isAxisLocked && (totalX > 6 || totalY > 6)) {
+        this.isAxisLocked = true;
+        if (totalY > totalX) {
+          // Vertical swipe detected -> allow browser native page scroll
+          this.isVerticalScroll = true;
+          if (this.canvas.hasPointerCapture(event.pointerId)) {
+            try {
+              this.canvas.releasePointerCapture(event.pointerId);
+            } catch {}
+          }
+          return;
+        } else {
+          // Horizontal swipe detected -> lock to 3D shelf scrolling
+          this.isVerticalScroll = false;
+          if (!this.canvas.hasPointerCapture(event.pointerId)) {
+            try {
+              this.canvas.setPointerCapture(event.pointerId);
+            } catch {}
+          }
+        }
+      }
+
+      if (this.isVerticalScroll) return;
+
       this.pendingFocusIndex = null;
-      const delta = event.clientX - this.pointerLastX;
       this.pointerLastX = event.clientX;
-      this.pointerTravel += Math.abs(delta);
+      this.pointerLastY = event.clientY;
+      this.pointerTravel += Math.abs(deltaX);
       this.targetScrollIndex = clamp(
-        this.targetScrollIndex - delta / Math.max(105, this.canvas.clientWidth * 0.11),
+        this.targetScrollIndex - deltaX / Math.max(105, this.canvas.clientWidth * 0.11),
         0,
         this.runtimeBooks.length - 1,
       );
@@ -670,12 +725,19 @@ export class ShelfEngine {
 
   private handlePointerUp = (event: PointerEvent) => {
     if (event.pointerId !== this.pointerId) return;
-    const wasClick = this.pointerTravel < 7 && Math.abs(event.clientX - this.pointerStartX) < 7;
+    const wasClick =
+      this.pointerTravel < 7 &&
+      Math.abs(event.clientX - this.pointerStartX) < 7 &&
+      Math.abs(event.clientY - this.pointerStartY) < 7;
     this.pointerDown = false;
     this.pointerId = null;
+    this.isAxisLocked = false;
+    this.isVerticalScroll = false;
     this.canvas.classList.remove("is-dragging");
     if (this.canvas.hasPointerCapture(event.pointerId)) {
-      this.canvas.releasePointerCapture(event.pointerId);
+      try {
+        this.canvas.releasePointerCapture(event.pointerId);
+      } catch {}
     }
     if (this.mode === "browse" && wasClick) {
       this.updatePointer(event);
@@ -688,6 +750,8 @@ export class ShelfEngine {
     if (event.pointerId !== this.pointerId) return;
     this.pointerDown = false;
     this.pointerId = null;
+    this.isAxisLocked = false;
+    this.isVerticalScroll = false;
     this.canvas.classList.remove("is-dragging");
   };
 
@@ -696,7 +760,7 @@ export class ShelfEngine {
       this.runtimeBooks.forEach((book) => {
         book.targetHover = 0;
       });
-      this.canvas.style.cursor = "grab";
+      this.canvas.style.cursor = "default";
     }
   };
 
@@ -764,7 +828,7 @@ export class ShelfEngine {
     this.runtimeBooks.forEach((book) => {
       book.targetHover = book.index === hit ? 1 : 0;
     });
-    this.canvas.style.cursor = hit === null ? "grab" : "pointer";
+    this.canvas.style.cursor = hit === null ? "default" : "pointer";
   }
 
   private xAtIndex(index: number) {
