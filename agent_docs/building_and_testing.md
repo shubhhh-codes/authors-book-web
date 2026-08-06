@@ -19,22 +19,26 @@ The dev server uses Next.js Turbopack by default in v16.
 Create `.env.local` in the project root:
 
 ```env
-# MongoDB Atlas connection string
+# Core Dependencies
 MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/<dbname>
-
-# Razorpay credentials (test keys for dev)
 RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
 RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
-
-# Used as the HMAC secret for admin session tokens
 NEXTAUTH_SECRET=your-random-secret-min-32-chars
-
-# Admin panel password (plain text, checked with timing-safe compare)
 ADMIN_PASSWORD=your-admin-password
+
+# WhatsApp Integration (required for order notifications)
+WABA_PHONE_ID=1234567890123456
+WHATSAPP_ACCESS_TOKEN=EAAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+WHATSAPP_BUSINESS_PHONE=+919876543210
+
+# Optional
+NODE_ENV=development
+DEBUG=false
 ```
 
 > ⚠️ Missing `MONGODB_URI` throws immediately at DB module load.  
-> ⚠️ Missing `NEXTAUTH_SECRET` in production means the fallback insecure key is used.
+> ⚠️ Missing `NEXTAUTH_SECRET` in production means the fallback insecure key is used.  
+> ⚠️ WhatsApp credentials are now required. If not configured, order confirmations will fail silently (logged as warnings, not crashes). Set these to enable WhatsApp notifications on payment success.
 
 ---
 
