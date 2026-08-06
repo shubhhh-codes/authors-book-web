@@ -1,28 +1,17 @@
-import { NextResponse } from 'next/server';
+import { ContactFormSchema, parseRequestBody, errorResponse, successResponse, getSafeErrorMessage } from '@/lib/validations';
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<Response> {
   try {
-    const body = await request.json();
-    const { name, email, phone, message } = body;
+    const { name, email, phone, message } = await parseRequestBody(request, ContactFormSchema);
 
-    if (!name || !email || !message) {
-      return NextResponse.json(
-        { error: 'Name, email, and message are required.' },
-        { status: 400 }
-      );
-    }
+    console.log('[Contact Submission]', { name, email, phone, timestamp: new Date().toISOString() });
 
-    console.log('[Contact Submission]', { name, email, phone, message, timestamp: new Date().toISOString() });
-
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: 'Thank you for reaching out! We will get back to you within 24 hours.',
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Contact API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to send message. Please try again.' },
-      { status: 500 }
-    );
+    return errorResponse(getSafeErrorMessage(error), 500);
   }
 }

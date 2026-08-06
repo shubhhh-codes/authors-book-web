@@ -24,7 +24,6 @@ function ProductCard({ product }: { product: Product }) {
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black rounded-xl"
       aria-label={`${product.title} – ₹${product.price}`}
     >
-      {/* Image */}
       <div className="relative aspect-[3/4] bg-gray-100 rounded-xl overflow-hidden mb-3">
         {image ? (
           <Image
@@ -45,7 +44,6 @@ function ProductCard({ product }: { product: Product }) {
           </div>
         )}
 
-        {/* Discount badge */}
         {hasDiscount && (
           <span className="absolute top-2 left-2 bg-black text-white text-xs font-bold px-2 py-1 rounded-full">
             -{discountPct}%
@@ -53,7 +51,6 @@ function ProductCard({ product }: { product: Product }) {
         )}
       </div>
 
-      {/* Info */}
       <div className="space-y-1 px-0.5">
         <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug group-hover:text-black">
           {product.title}
@@ -99,7 +96,6 @@ export default function FeaturedProducts({
       className="py-9 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto"
       aria-labelledby="featured-products-heading"
     >
-      {/* Header — mirrors featured-collection.liquid title-wrapper */}
       <div className="flex items-baseline justify-between mb-8">
         <h2
           id="featured-products-heading"

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const OrderSchema = new mongoose.Schema({
-  bookingId: { type: String, unique: true, sparse: true },  // ✅ sparse: true prevents index errors
+  bookingId: { type: String, unique: true, sparse: true },
   customerEmail: String,
   customerName: String,
   customerPhone: String,
@@ -42,5 +42,9 @@ const OrderSchema = new mongoose.Schema({
     delivered: Date,
   },
 });
+
+OrderSchema.index({ customerEmail: 1 });
+OrderSchema.index({ status: 1 });
+OrderSchema.index({ 'timestamps.created': -1 });
 
 export default mongoose.models.Order || mongoose.model('Order', OrderSchema);

@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import type { AccordionRow } from '@/lib/types';
 
-// ─── Static data verbatim from templates/index.json collapsible_content_LMGzH3 ─
-
 const ACCORDION_ROWS: AccordionRow[] = [
   {
     heading: 'WHY WE HERE',
@@ -169,7 +167,7 @@ export default function AccordionSection() {
       className="py-16 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto font-[family-name:var(--serif)] bg-[var(--paper)]"
       aria-labelledby="accordion-section-heading"
     >
-      {/* Section heading — mirrors collapsible-content heading: "Miscellaneous Points" */}
+      {/* Section heading */}
       <div className="text-center mb-12">
         <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--ink-soft)] mb-3 font-[family-name:var(--sans)]">
           Information

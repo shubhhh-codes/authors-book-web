@@ -1,16 +1,17 @@
 import { connectDB } from '@/lib/db';
 import Order from '@/lib/schemas/Order';
+import type { Order as OrderType } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 async function getCustomersData() {
   try {
     await connectDB();
-    const orders = await Order.find({}).lean();
+    const orders = await Order.find({}).lean<OrderType[]>();
 
-    const customerMap: Record<string, { name: string; email: string; phone: string; totalOrders: number; totalSpent: number; lastOrderDate: Date }> = {};
+    const customerMap: Record<string, { name: string; email: string; phone: string; totalOrders: number; totalSpent: number; lastOrderDate: Date | string }> = {};
 
-    orders.forEach((order: any) => {
+    orders.forEach((order) => {
       const email = order.customerEmail || 'unknown@example.com';
       if (!customerMap[email]) {
         customerMap[email] = {

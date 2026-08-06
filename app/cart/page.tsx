@@ -5,15 +5,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import { useRouter } from 'next/navigation';
+import type { CartItem, RazorpayResponse, RazorpayConstructor } from '@/lib/types';
 
 declare global {
   interface Window {
-    Razorpay: any;
+    Razorpay: RazorpayConstructor;
   }
 }
 
 export default function Cart() {
-  const [cart, setCart] = useState<any[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -29,30 +30,33 @@ export default function Cart() {
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
-      setCart(JSON.parse(savedCart));
+      try {
+        setCart(JSON.parse(savedCart));
+      } catch {
+        setCart([]);
+      }
     }
   }, []);
 
-  const subtotal = cart.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
+  const subtotal = cart.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0);
   const shippingCost = subtotal > 500 ? 0 : 100;
   const total = subtotal + shippingCost;
 
   const removeItem = (productId: string) => {
-    const updated = cart.filter((item: any) => item._id !== productId);
+    const updated = cart.filter((item: CartItem) => item._id !== productId);
     setCart(updated);
     localStorage.setItem('cart', JSON.stringify(updated));
   };
 
   const updateQuantity = (productId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
-    
-    const updated = cart.map((item: any) =>
+
+    const updated = cart.map((item: CartItem) =>
       item._id === productId ? { ...item, quantity: newQuantity } : item
     );
     setCart(updated);
     localStorage.setItem('cart', JSON.stringify(updated));
   };
-
 
   const handleCheckout = async () => {
     if (!formData.name || !formData.email || !formData.phone || !formData.street) {
@@ -68,9 +72,8 @@ export default function Cart() {
     setLoading(true);
 
     try {
-      // Transform cart items: _id → productId for validation
-      const checkoutItems = cart.map((item: any) => ({
-        productId: item._id,  // ✅ Convert MongoDB _id to productId
+      const checkoutItems = cart.map((item: CartItem) => ({
+        productId: item._id,
         handle: item.handle || '',
         title: item.title,
         sku: item.sku || '',
@@ -82,7 +85,7 @@ export default function Cart() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: checkoutItems,  // ✅ Now has correct format
+          items: checkoutItems,
           subtotal,
           shippingCost,
           total,
@@ -98,7 +101,6 @@ export default function Cart() {
         }),
       });
 
-      // ✅ Check HTTP response status first
       if (!response.ok) {
         const errorData = await response.json();
         const errorMessage = errorData.error || 'Checkout failed';
@@ -108,13 +110,11 @@ export default function Cart() {
 
       const data = await response.json();
 
-      // ✅ Validate response has required fields
       if (!data.razorpayOrderId || !data.orderId) {
         console.error('[Checkout Error] Missing required response fields:', data);
         throw new Error('Invalid server response - missing order details');
       }
 
-      // Load Razorpay
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => {
@@ -124,22 +124,20 @@ export default function Cart() {
           currency: 'INR',
           order_id: data.razorpayOrderId,
           customer_notification: 1,
-          handler: async (response: any) => {
-            // Verify payment
+          handler: async (razorpayResponse: RazorpayResponse) => {
             const verifyRes = await fetch('/api/verify-payment', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 orderId: data.orderId,
                 razorpayOrderId: data.razorpayOrderId,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
+                razorpayPaymentId: razorpayResponse.razorpay_payment_id,
+                razorpaySignature: razorpayResponse.razorpay_signature,
               }),
             });
 
             const verifyData = await verifyRes.json();
 
-            // ✅ Check response status first
             if (!verifyRes.ok) {
               console.error('[Payment Verification Error]', verifyData);
               alert(`Payment verification failed: ${verifyData.error || 'Unknown error'}`);
@@ -165,22 +163,19 @@ export default function Cart() {
         razorpay.open();
       };
       document.body.appendChild(script);
-    } catch (error: any) {
-      // ✅ Log full error for debugging
+    } catch (error) {
+      const err = error as Error;
       console.error('[Checkout Exception]', {
-        message: error.message,
-        stack: error.stack,
-        type: error.constructor.name,
+        message: err.message,
+        stack: err.stack,
       });
-      
-      // ✅ Show user-friendly error message
-      const userMessage = error.message || 'Checkout failed. Please try again.';
+
+      const userMessage = err.message || 'Checkout failed. Please try again.';
       alert('Checkout error: ' + userMessage);
     } finally {
       setLoading(false);
     }
   };
-
 
   return (
     <>
@@ -195,14 +190,13 @@ export default function Cart() {
       ) : (
         <div className="max-w-7xl mx-auto px-6 py-12">
           <h1 className="text-4xl font-bold mb-8">Shopping Cart</h1>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Cart Items */}
             <div className="lg:col-span-2">
               <div className="space-y-4">
                 {cart.map((item) => (
                   <div key={item._id} className="border border-gray-200 rounded-lg p-4 flex gap-4">
-                    {item.images[0] && (
+                    {item.images?.[0] && (
                       <div className="relative w-24 h-24 flex-shrink-0">
                         <Image
                           src={item.images[0].url}
@@ -213,11 +207,11 @@ export default function Cart() {
                         />
                       </div>
                     )}
-                    
+
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg">{item.title}</h3>
                       <p className="text-gray-600">₹{item.price}</p>
-                      
+
                       <div className="flex items-center gap-2 mt-2">
                         <button
                           onClick={() => updateQuantity(item._id, item.quantity - 1)}
@@ -234,7 +228,7 @@ export default function Cart() {
                         </button>
                       </div>
                     </div>
-                    
+
                     <div className="text-right">
                       <p className="font-semibold">₹{item.price * item.quantity}</p>
                       <button
@@ -248,11 +242,9 @@ export default function Cart() {
                 ))}
               </div>
             </div>
-            
-            {/* Checkout Form + Summary */}
+
             <div className="lg:col-span-1">
               <div className="border border-gray-200 rounded-lg p-6 sticky top-20">
-                {/* Order Summary */}
                 <div className="mb-6 pb-6 border-b">
                   <h2 className="font-bold text-lg mb-4">Order Summary</h2>
                   <div className="space-y-2 text-sm">
@@ -270,8 +262,7 @@ export default function Cart() {
                     </div>
                   </div>
                 </div>
-                
-                {/* Shipping Form */}
+
                 <div className="space-y-3 mb-6">
                   <input
                     type="text"
@@ -323,7 +314,7 @@ export default function Cart() {
                     className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                   />
                 </div>
-                
+
                 <button
                   onClick={handleCheckout}
                   disabled={loading}

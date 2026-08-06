@@ -1,37 +1,34 @@
-import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Discount from '@/lib/schemas/Discount';
+import { AdminDiscountCreateSchema, parseRequestBody, errorResponse, successResponse, getSafeErrorMessage } from '@/lib/validations';
 
-export async function GET() {
+export async function GET(): Promise<Response> {
   try {
     await connectDB();
     const discounts = await Discount.find({}).sort({ createdAt: -1 }).lean();
-    return NextResponse.json(discounts.map((d: any) => ({ ...d, _id: String(d._id) })));
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return successResponse(discounts.map((d) => ({ ...d, _id: String(d._id) })));
+  } catch (error) {
+    console.error('Admin GET discounts error:', error);
+    return errorResponse(getSafeErrorMessage(error), 500);
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<Response> {
   try {
     await connectDB();
-    const body = await request.json();
-    const { code, discountType, value, minSubtotal } = body;
-
-    if (!code || value == null) {
-      return NextResponse.json({ error: 'Code and discount value are required.' }, { status: 400 });
-    }
+    const data = await parseRequestBody(request, AdminDiscountCreateSchema);
 
     const newDiscount = await Discount.create({
-      code: String(code).toUpperCase().trim(),
-      discountType: discountType || 'percentage',
-      value: Number(value),
-      minSubtotal: Number(minSubtotal) || 0,
+      code: data.code.toUpperCase().trim(),
+      discountType: data.discountType,
+      value: data.value,
+      minSubtotal: data.minSubtotal,
       active: true,
     });
 
-    return NextResponse.json({ success: true, discount: newDiscount }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return successResponse({ success: true, discount: newDiscount }, 201);
+  } catch (error) {
+    console.error('Admin POST discount error:', error);
+    return errorResponse(getSafeErrorMessage(error), 500);
   }
 }

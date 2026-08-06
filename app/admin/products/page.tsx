@@ -2,14 +2,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { connectDB } from '@/lib/db';
 import Product from '@/lib/schemas/Product';
+import type { Product as ProductType } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-async function getAdminProducts() {
+async function getAdminProducts(): Promise<ProductType[]> {
   try {
     await connectDB();
-    const docs = await Product.find({}).sort({ createdAt: -1 }).lean();
-    return docs.map((d: any) => ({ ...d, _id: String(d._id) }));
+    const docs = await Product.find({}).sort({ createdAt: -1 }).lean<ProductType[]>();
+    return docs.map((d) => ({ ...d, _id: String(d._id) }));
   } catch (err) {
     console.error('getAdminProducts error:', err);
     return [];
@@ -38,7 +39,7 @@ export default async function AdminProductsPage() {
         </Link>
       </div>
 
-      {/* Table Container (Shopify Polaris Card) */}
+      {/* Table Container */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-2xs overflow-hidden">
         {/* Table Filters Top Bar */}
         <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-4 bg-gray-50/50">
@@ -75,7 +76,7 @@ export default async function AdminProductsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 font-medium">
-                {products.map((product: any) => {
+                {products.map((product) => {
                   const img = product.images?.[0]?.url;
                   const qty = product.inventory?.quantity ?? 10;
                   return (

@@ -1301,7 +1301,8 @@ canvas:focus-visible {
 
   .shelf-index {
     right: 72px;
-    bottom: 24px;
+    /* bottom: 24px; */
+    bottom: 90px;
     left: 72px;
     display: block;
   }

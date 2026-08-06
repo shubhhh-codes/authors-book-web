@@ -1,13 +1,15 @@
 import { connectDB } from '@/lib/db';
 import Product from '@/lib/schemas/Product';
+import { errorResponse, successResponse, escapeRegex, getSafeErrorMessage } from '@/lib/validations';
+import mongoose from 'mongoose';
 
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<Response> {
   try {
     await connectDB();
-    
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '12');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '12'), 100);
     const skip = (page - 1) * limit;
 
     const type = searchParams.get('type');
@@ -16,24 +18,24 @@ export async function GET(request: Request) {
     const vendor = searchParams.get('vendor');
     const search = searchParams.get('search');
 
-    const query: Record<string, any> = { published: true };
+    const query: Record<string, unknown> = { published: true };
 
     if (type) {
-      query.type = { $regex: new RegExp(`^${type}`, 'i') };
+      query.type = { $regex: new RegExp(`^${escapeRegex(type)}`, 'i') };
     }
 
     if (genre) {
-      const genreRegex = genre.replace(/-/g, '[-\\s]?');
-      query.genre = { $regex: new RegExp(genreRegex, 'i') };
+      const genrePattern = escapeRegex(genre).replace(/-/g, '[-\\s]?');
+      query.genre = { $regex: new RegExp(genrePattern, 'i') };
     }
 
     if (vendor) {
       const vendorClean = vendor.replace(/\+/g, ' ');
-      query.vendor = { $regex: new RegExp(vendorClean, 'i') };
+      query.vendor = { $regex: new RegExp(escapeRegex(vendorClean), 'i') };
     }
 
     if (tag) {
-      const tagPattern = tag.replace(/-/g, '[-\\s]?');
+      const tagPattern = escapeRegex(tag).replace(/-/g, '[-\\s]?');
       const tagRegex = new RegExp(tagPattern, 'i');
       query.$or = [
         { tags: { $elemMatch: { $regex: tagRegex } } },
@@ -44,7 +46,7 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
+      const searchRegex = new RegExp(escapeRegex(search), 'i');
       const searchOr = [
         { title: searchRegex },
         { description: searchRegex },
@@ -64,11 +66,12 @@ export async function GET(request: Request) {
     const products = await Product.find(query)
       .skip(skip)
       .limit(limit)
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     const total = await Product.countDocuments(query);
 
-    return Response.json({
+    return successResponse({
       products,
       pagination: {
         total,
@@ -77,8 +80,8 @@ export async function GET(request: Request) {
         pages: Math.ceil(total / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Products API error:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return errorResponse(getSafeErrorMessage(error), 500);
   }
 }

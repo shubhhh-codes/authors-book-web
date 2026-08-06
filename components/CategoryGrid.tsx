@@ -1,8 +1,6 @@
 import Link from 'next/link';
 import type { CategoryCard } from '@/lib/types';
 
-// ─── Static data extracted from templates/index.json + 3D Bookmarks option ────
-
 const CATEGORIES: CategoryCard[] = [
   {
     heading: 'All Books',
@@ -76,7 +74,6 @@ const CATEGORIES: CategoryCard[] = [
   },
 ];
 
-// Decorative book SVG used when no image is available
 function BookPlaceholder({ textColor }: { textColor: string }) {
   return (
     <svg

@@ -2,13 +2,20 @@ import { connectDB } from '@/lib/db';
 import Order from '@/lib/schemas/Order';
 import Product from '@/lib/schemas/Product';
 import crypto from 'crypto';
-import { VerifyPaymentSchema, parseRequestBody, errorResponse, successResponse } from '@/lib/validations';
+import { VerifyPaymentSchema, parseRequestBody, errorResponse, successResponse, getSafeErrorMessage } from '@/lib/validations';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<Response> {
   try {
+    const clientIp = getClientIp(request);
+    const { allowed } = checkRateLimit(`verify:${clientIp}`, 10, 60 * 1000);
+
+    if (!allowed) {
+      return errorResponse('Too many verification attempts. Please try again later.', 429);
+    }
+
     await connectDB();
-    
-    // ✅ 1. Validate request with Zod
+
     const payload = await parseRequestBody(request, VerifyPaymentSchema);
     const {
       razorpayOrderId,
@@ -17,8 +24,7 @@ export async function POST(request: Request) {
       orderId,
     } = payload;
 
-    // ✅ 2. Verify Razorpay signature (cryptographic verification)
-    const secret = process.env.RAZORPAY_KEY_SECRET || '';
+    const secret = process.env.RAZORPAY_KEY_SECRET;
     if (!secret) {
       throw new Error('RAZORPAY_KEY_SECRET not configured');
     }
@@ -27,7 +33,6 @@ export async function POST(request: Request) {
     shasum.update(`${razorpayOrderId}|${razorpayPaymentId}`);
     const expectedSignature = shasum.digest('hex');
 
-    // Use constant-time comparison to prevent timing attacks
     const signatureMatches = crypto.timingSafeEqual(
       Buffer.from(expectedSignature),
       Buffer.from(razorpaySignature)
@@ -37,12 +42,12 @@ export async function POST(request: Request) {
       return errorResponse('Payment verification failed. Invalid signature.', 401);
     }
 
-    // ✅ 3. Check if order exists and hasn't been paid yet
     const order = await Order.findById(orderId);
     if (!order) {
       return errorResponse('Order not found', 404);
     }
 
+    // Idempotent: return success if already paid
     if (order.status === 'paid') {
       return successResponse({
         success: true,
@@ -55,26 +60,20 @@ export async function POST(request: Request) {
       return errorResponse('Order ID mismatch', 400);
     }
 
-    // ✅ 4. Deduct inventory for paid order
     for (const item of order.items) {
       await Product.findByIdAndUpdate(
         item.productId,
-        {
-          $inc: { 'inventory.quantity': -item.quantity },
-        },
+        { $inc: { 'inventory.quantity': -item.quantity } },
         { new: true }
       );
     }
 
-    // ✅ 5. Update order status to paid
     order.status = 'paid';
     order.paymentId = razorpayPaymentId;
     order.timestamps.paid = new Date();
     await order.save();
 
-    // ✅ 6. Send WhatsApp notification
-    // Note: If WhatsApp credentials not configured, notification fails silently
-    // This doesn't affect order confirmation - order is already saved to DB
+    // WhatsApp notification — fire-and-forget, never blocks payment confirmation
     try {
       const { sendWhatsAppNotification } = await import('@/lib/whatsapp');
       await sendWhatsAppNotification({
@@ -85,9 +84,7 @@ export async function POST(request: Request) {
         type: 'order_confirmation',
       });
     } catch (whatsappError) {
-      console.warn('WhatsApp notification failed:', whatsappError);
-      // Don't fail the payment verification if WhatsApp fails
-      // Customer still has order confirmation in DB and email
+      console.warn('WhatsApp notification failed (non-blocking):', whatsappError);
     }
 
     return successResponse({
@@ -97,15 +94,8 @@ export async function POST(request: Request) {
       orderId: order._id,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Verification error:', error);
-    
-    // Don't expose internal error details
-    const message = error.message?.includes('Validation failed')
-      ? error.message
-      : 'Payment verification failed. Please contact support.';
-
-    return errorResponse(message, 500);
+    return errorResponse(getSafeErrorMessage(error), 500);
   }
 }
-

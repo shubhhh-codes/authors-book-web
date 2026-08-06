@@ -1,12 +1,12 @@
 import mongoose from 'mongoose';
 import dns from 'dns';
 
-// Ensure IPv4 first resolution in Node.js DNS
+// IPv4 first prevents DNS resolution failures on some networks
 try {
   dns.setDefaultResultOrder?.('ipv4first');
 } catch {}
 
-// Fallback to Google & Cloudflare DNS if system DNS fails SRV lookups
+// Fallback DNS servers if system DNS fails SRV lookups
 try {
   dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
 } catch {}
@@ -17,13 +17,18 @@ if (!MONGODB_URI) {
   throw new Error('Please define MONGODB_URI in .env.local');
 }
 
-declare global {
-  var mongoose: { conn: any; promise: any } | undefined;
+interface MongooseCache {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
 }
 
-let cached = global.mongoose || { conn: null, promise: null };
+declare global {
+  var mongoose: MongooseCache | undefined;
+}
 
-export async function connectDB() {
+let cached: MongooseCache = global.mongoose || { conn: null, promise: null };
+
+export async function connectDB(): Promise<typeof mongoose> {
   if (!MONGODB_URI) {
     throw new Error('Please define MONGODB_URI in .env.local');
   }
@@ -42,7 +47,7 @@ export async function connectDB() {
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
       return mongoose;
     }).catch((err) => {
-      cached.promise = null; // Clear cached promise on failure so retries can occur
+      cached.promise = null; // Clear cached promise so retries can occur
       throw err;
     });
   }

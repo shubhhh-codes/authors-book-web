@@ -2,7 +2,8 @@ import { connectDB } from '@/lib/db';
 import Order from '@/lib/schemas/Order';
 import Product from '@/lib/schemas/Product';
 import Razorpay from 'razorpay';
-import { CheckoutRequestSchema, parseRequestBody, errorResponse, successResponse } from '@/lib/validations';
+import mongoose from 'mongoose';
+import { CheckoutRequestSchema, parseRequestBody, errorResponse, successResponse, getSafeErrorMessage } from '@/lib/validations';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 const razorpay = new Razorpay({
@@ -10,13 +11,13 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET || '',
 });
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<Response> {
   let orderId: string | null = null;
 
   try {
-    // ✅ 0. Rate limiting (5 requests per IP per minute)
+    // Rate limit BEFORE DB to fail fast on DOS attempts
     const clientIp = getClientIp(request);
-    const { allowed, remaining } = checkRateLimit(clientIp, 5, 60 * 1000);
+    const { allowed } = checkRateLimit(clientIp, 5, 60 * 1000);
 
     if (!allowed) {
       return errorResponse(
@@ -26,8 +27,7 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
-    
-    // ✅ 1. Validate request body with Zod
+
     const payload = await parseRequestBody(request, CheckoutRequestSchema);
     const {
       items,
@@ -40,30 +40,27 @@ export async function POST(request: Request) {
       shippingAddress,
     } = payload;
 
-    // ✅ 2. Verify items exist in database and prices match
     const productIds = items.map(item => {
-      try {
-        // Convert string productId to MongoDB ObjectId
-        return new (require('mongoose')).Types.ObjectId(item.productId);
-      } catch (e) {
+      if (!mongoose.Types.ObjectId.isValid(item.productId)) {
         throw new Error(`Invalid product ID format: ${item.productId}`);
       }
+      return new mongoose.Types.ObjectId(item.productId);
     });
-    const dbProducts = await Product.find({ _id: { $in: productIds } });
+
+    const dbProducts = await Product.find({ _id: { $in: productIds } }).lean();
 
     if (dbProducts.length !== items.length) {
       return errorResponse('Some products in cart no longer exist', 400);
     }
 
-    // ✅ 3. Verify prices haven't changed and check inventory
     for (const item of items) {
       const dbProduct = dbProducts.find(p => p._id.toString() === item.productId);
-      
+
       if (!dbProduct) {
         return errorResponse(`Product ${item.title} not found`, 400);
       }
 
-      // Check if price matches (within ₹1 tolerance for rounding)
+      // ±₹1 tolerance for floating-point rounding
       if (Math.abs(dbProduct.price - item.price) > 1) {
         return errorResponse(
           `Price changed for ${item.title}. Please refresh and try again.`,
@@ -71,7 +68,6 @@ export async function POST(request: Request) {
         );
       }
 
-      // ✅ 4. Check inventory
       if (dbProduct.inventory?.quantity !== undefined) {
         if (dbProduct.inventory.quantity < item.quantity) {
           return errorResponse(
@@ -82,12 +78,11 @@ export async function POST(request: Request) {
       }
     }
 
-    // ✅ 5. Generate unique booking ID (using crypto for better uniqueness)
+    // timestamp + random bytes prevent collision unlike timestamp alone
     const crypto = await import('crypto');
     const randomBytes = crypto.randomBytes(4).toString('hex');
     const bookingId = `AB-${Date.now().toString().slice(-8)}-${randomBytes}`;
 
-    // ✅ 6. Create order in database FIRST (before Razorpay)
     const order = new Order({
       bookingId,
       customerEmail,
@@ -104,11 +99,10 @@ export async function POST(request: Request) {
     await order.save();
     orderId = order._id.toString();
 
-    // ✅ 7. Create Razorpay order with link to our order
     const razorpayOrder = await razorpay.orders.create({
       amount: Math.round(total * 100),
       currency: 'INR',
-      receipt: bookingId, // Use our booking ID as receipt for tracking
+      receipt: bookingId,
       notes: {
         orderId: orderId,
         customerEmail,
@@ -116,7 +110,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // ✅ 8. Update order with Razorpay order ID
     order.razorpayOrderId = razorpayOrder.id;
     await order.save();
 
@@ -130,24 +123,17 @@ export async function POST(request: Request) {
       currency: 'INR',
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Checkout error:', error);
-    
-    // Clean up orphaned order if something fails after creation
+
     if (orderId) {
       try {
         await Order.findByIdAndDelete(orderId);
       } catch (cleanupError) {
-        console.error('Cleanup failed:', cleanupError);
+        console.error('Orphaned order cleanup failed:', cleanupError);
       }
     }
 
-    // Return safe error message (no sensitive data)
-    const message = error.message?.includes('Validation failed')
-      ? error.message
-      : 'Failed to create order. Please try again.';
-
-    return errorResponse(message, 500);
+    return errorResponse(getSafeErrorMessage(error), 500);
   }
 }
-
