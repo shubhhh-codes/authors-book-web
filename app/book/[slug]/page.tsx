@@ -1,30 +1,59 @@
-"use client";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { catalog, findBookIndexBySlug } from "@/app/catalog";
+import ShelfPage from "@/app/ShelfPage";
 
-import { useEffect } from "react";
-import { useParams } from "next/navigation";
+interface BookPageProps {
+  params: Promise<{ slug: string }>;
+}
 
 /**
- * /book/[slug] is a shareable deep-link URL used only for URL bar display
- * via window.history.pushState while the SPA is running on the home page.
- *
- * If someone opens /book/[slug] directly (e.g. shared link, page refresh),
- * redirect them to the home page with an ?open= query param so
- * ProgressLibrary can auto-focus that book without a separate full mount.
+ * Generates per-book SSR metadata so social links and search engines receive
+ * the correct <title>, <meta description>, and og: tags for each volume.
  */
-export default function BookSlugPage() {
-  const params = useParams();
-  const slug = typeof params?.slug === "string" ? params.slug : "";
+export async function generateMetadata({ params }: BookPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const idx = findBookIndexBySlug(slug);
+  if (idx === -1) {
+    return { title: "Book Not Found | Authors Book" };
+  }
+  const book = catalog[idx];
+  const title = `${book.title} — ${book.author} | Authors Book`;
+  const image = book.coverImage ?? undefined;
 
-  useEffect(() => {
-    // Redirect to home page with a query param so ProgressLibrary's
-    // getSlugFromLocation reads it and focuses the correct book.
-    if (slug) {
-      window.location.replace(`/?book=${encodeURIComponent(slug)}`);
-    } else {
-      window.location.replace("/");
-    }
-  }, [slug]);
+  return {
+    title,
+    description: book.description,
+    openGraph: {
+      title,
+      description: book.description,
+      siteName: "Authors Book",
+      type: "book",
+      ...(image ? { images: [{ url: image, width: 600, height: 900 }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: book.description,
+      ...(image ? { images: [image] } : {}),
+    },
+  };
+}
 
-  // Show nothing while redirecting — home page handles the experience.
+/**
+ * /book/[slug] — Server Component.
+ *
+ * Handles direct navigation and browser refresh of any volume deep-link URL
+ * (e.g. https://yoursite.com/book/think-like-a-monk).
+ *
+ * Returns HTTP 200 with the full bookshelf experience pre-scoped to the
+ * requested volume.  The ShelfPage client component boots the 3D canvas
+ * and immediately opens the matching book in inspection mode via initialSlug.
+ */
+export default async function BookPage({ params }: BookPageProps) {
+  const { slug } = await params;
+  if (findBookIndexBySlug(slug) === -1) {
+    notFound();
+  }
   return null;
 }

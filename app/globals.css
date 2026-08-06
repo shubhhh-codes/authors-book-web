@@ -383,14 +383,17 @@ canvas:focus-visible {
 
 .browse-caption {
   position: absolute;
+  z-index: 20;
   bottom: clamp(178px, 23vh, 228px);
   left: clamp(24px, 5.4vw, 92px);
   width: min(430px, 36vw);
   padding-left: 60px;
   pointer-events: none;
   touch-action: pan-y;
+  transform: translate3d(0, 0, 0);
+  will-change: opacity, transform;
   transition:
-    opacity 420ms ease,
+    opacity 420ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -689,6 +692,7 @@ canvas:focus-visible {
   right: 0;
   width: min(620px, 41vw);
   height: 100%;
+  overflow: hidden;
   opacity: 0;
   pointer-events: none;
   transform: translateX(44px);
@@ -736,8 +740,8 @@ canvas:focus-visible {
   opacity: 1;
   transform: translate3d(0, 0, 0);
   transition:
-    opacity 400ms ease 220ms,
-    transform 520ms cubic-bezier(0.22, 1, 0.36, 1) 220ms;
+    opacity 420ms cubic-bezier(0.22, 1, 0.36, 1) 100ms,
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1) 100ms;
 }
 
 .is-returning .shelf-arrow {
@@ -747,12 +751,13 @@ canvas:focus-visible {
 
 .book-details__inner {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
   height: 100%;
   padding: 27px clamp(28px, 4vw, 68px) 30px clamp(52px, 6vw, 98px);
   border-left: 1px solid rgba(37, 35, 31, 0.08);
   position: relative;
   z-index: 20;
+  overflow: hidden;
 }
 
 .back-button {
@@ -827,9 +832,16 @@ canvas:focus-visible {
   max-height: 100%;
   padding: 34px 0;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--hairline) transparent;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   animation: fadeInCopy 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.book-details__copy::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 @keyframes fadeInCopy {
@@ -964,7 +976,8 @@ canvas:focus-visible {
   gap: 14px;
   align-items: center;
   justify-content: space-between;
-  padding-top: 16px;
+  margin-top: 32px;
+  padding-top: 18px;
   border-top: 1px solid var(--hairline);
   color: var(--ink-soft);
   font-size: 8px;
@@ -1344,34 +1357,49 @@ canvas:focus-visible {
   }
 
   .book-details {
-    top: auto;
+    top: 0;
     bottom: 0;
+    left: 0;
+    right: 0;
     width: 100%;
-    height: min(49dvh, 500px);
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     opacity: 0;
+    pointer-events: none;
     transform: translateY(100%);
     z-index: 22;
+    transition:
+      opacity 380ms cubic-bezier(0.4, 0, 1, 1),
+      transform 520ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .book-details::-webkit-scrollbar {
+    display: none;
   }
 
   .book-details::before {
-    top: -55px;
-    background:
-      linear-gradient(180deg, rgba(238, 232, 219, 0) 0%, var(--paper) 100%),
-      var(--paper);
-    z-index: -1;
+    display: none;
   }
 
   .is-focused .book-details {
     opacity: 1;
+    pointer-events: none;
     transform: translateY(0);
   }
 
   .book-details__inner {
+    pointer-events: auto;
+    margin-top: 48dvh;
+    min-height: 52dvh;
+    background: var(--paper);
+    box-shadow: 0 -8px 24px rgba(37, 35, 31, 0.08);
     grid-template-columns: 1fr auto;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    padding: 9px 20px max(14px, env(safe-area-inset-bottom));
-    border-top: 1px solid;
-    border-image: linear-gradient(to right, rgba(37, 35, 31, 0.08) 0%, rgba(37, 35, 31, 0.04) 50%, rgba(37, 35, 31, 0) 90%) 1;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 16px 20px max(24px, env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(37, 35, 31, 0.1);
     border-left: 0;
     position: relative;
     z-index: 20;
@@ -1396,7 +1424,8 @@ canvas:focus-visible {
     grid-column: 1 / -1;
     grid-row: 2;
     align-self: auto;
-    padding: 25px 0 18px;
+    overflow: visible;
+    padding: 20px 0 18px;
   }
 
   .book-details__copy .eyebrow {
@@ -1431,8 +1460,7 @@ canvas:focus-visible {
   }
 
   .focus-controls {
-    grid-column: 1 / -1;
-    grid-row: 3;
+    margin-top: 24px;
   }
 
   .focus-controls span:nth-child(2) {

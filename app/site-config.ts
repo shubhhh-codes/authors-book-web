@@ -4,10 +4,10 @@ export const siteConfig = {
   description:
     "Explore a tactile 3D bookshelf with procedural hardcovers and optional contributor-owned cover art.",
   wordmark: "AUTHORS BOOK",
-  collectionName: "AN INTERACTIVE 3D LIBRARY",
+  collectionName: "AUTHORS BOOK SHELF",
   editionEyebrow: "LIBRARY EDITION",
   coverImprint: "AUTHORS BOOK & BOOKMARKS",
-  coverTagline: "AN INTERACTIVE LIBRARY",
+  coverTagline: "AUTHORS BOOK",
   spineMark: "CS",
   bookLinkLabel: "View book",
   socialImageAlt:
