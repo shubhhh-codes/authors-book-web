@@ -238,6 +238,10 @@ export class ShelfEngine {
     this.camera.lookAt(browseTarget);
 
     this.controls = new OrbitControls(this.camera, this.canvas);
+    // OrbitControls.connect() sets canvas.style.touchAction = 'none' which
+    // blocks ALL native touch gestures (including page scroll). Override it
+    // back to 'pan-y' so mobile vertical scrolling works natively.
+    this.canvas.style.touchAction = 'pan-y';
     this.controls.enabled = false;
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.075;
@@ -656,6 +660,21 @@ export class ShelfEngine {
 
   private handlePointerDown = (event: PointerEvent) => {
     if (this.mode !== "browse") return;
+    if (event.isPrimary === false) {
+      this.pointerDown = false;
+      return;
+    }
+
+    if (event.pointerType === "touch") {
+      this.updatePointer(event);
+      const hit = this.raycastBook();
+      if (hit === null) {
+        // Touch started outside any book on mobile -> do not intercept in JS, allow native page scroll
+        this.pointerDown = false;
+        return;
+      }
+    }
+
     this.pointerDown = true;
     this.pointerId = event.pointerId;
     this.pointerStartX = event.clientX;
@@ -677,16 +696,23 @@ export class ShelfEngine {
     if (this.mode !== "browse") return;
 
     if (this.pointerDown && event.pointerId === this.pointerId) {
+      if (event.isPrimary === false) {
+        this.pointerDown = false;
+        return;
+      }
       const deltaX = event.clientX - this.pointerLastX;
       const deltaY = event.clientY - this.pointerLastY;
       const totalX = Math.abs(event.clientX - this.pointerStartX);
       const totalY = Math.abs(event.clientY - this.pointerStartY);
 
-      if (!this.isAxisLocked && (totalX > 6 || totalY > 6)) {
+      const dragThreshold = event.pointerType === 'touch' ? 4 : 6;
+
+      if (!this.isAxisLocked && (totalX > dragThreshold || totalY > dragThreshold)) {
         this.isAxisLocked = true;
-        if (totalY > totalX) {
+        if (totalY >= totalX * 0.7) {
           // Vertical swipe detected -> allow browser native page scroll
           this.isVerticalScroll = true;
+          this.pointerDown = false;
           if (this.canvas.hasPointerCapture(event.pointerId)) {
             try {
               this.canvas.releasePointerCapture(event.pointerId);
@@ -696,7 +722,7 @@ export class ShelfEngine {
         } else {
           // Horizontal swipe detected -> lock to 3D shelf scrolling
           this.isVerticalScroll = false;
-          if (!this.canvas.hasPointerCapture(event.pointerId)) {
+          if (event.pointerType !== 'touch' && !this.canvas.hasPointerCapture(event.pointerId)) {
             try {
               this.canvas.setPointerCapture(event.pointerId);
             } catch {}
@@ -704,7 +730,10 @@ export class ShelfEngine {
         }
       }
 
-      if (this.isVerticalScroll) return;
+      if (this.isVerticalScroll) {
+        this.pointerDown = false;
+        return;
+      }
 
       this.pendingFocusIndex = null;
       this.pointerLastX = event.clientX;
@@ -717,6 +746,7 @@ export class ShelfEngine {
       );
       this.lastInputTime = performance.now();
       this.canvas.classList.add("is-dragging");
+      this.canvas.style.cursor = "grabbing";
       return;
     }
 
@@ -744,6 +774,10 @@ export class ShelfEngine {
       const hit = this.raycastBook();
       if (hit !== null) this.focusBook(hit);
     }
+    // Restore cursor after drag ends
+    this.updatePointer(event);
+    const postDragHit = this.raycastBook();
+    this.canvas.style.cursor = postDragHit !== null ? "grab" : "default";
   };
 
   private handlePointerCancel = (event: PointerEvent) => {
@@ -828,7 +862,7 @@ export class ShelfEngine {
     this.runtimeBooks.forEach((book) => {
       book.targetHover = book.index === hit ? 1 : 0;
     });
-    this.canvas.style.cursor = hit === null ? "default" : "pointer";
+    this.canvas.style.cursor = hit === null ? "default" : "grab";
   }
 
   private xAtIndex(index: number) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ProgressLibrary } from "./ProgressLibrary";
 import EditorialShowcase from "@/components/EditorialShowcase";
 import AboutUs from "@/components/AboutUs";
@@ -12,10 +12,21 @@ export default function Home() {
   const [isFocused, setIsFocused] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+  useEffect(() => {
+    if (isFocused) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isFocused]);
+
   return (
     <div
-      className={`relative bg-[var(--paper)] ${
-        isFocused ? "h-[100dvh] overflow-hidden" : "min-h-screen overflow-y-auto"
+      className={`relative bg-[var(--paper)] min-h-screen ${
+        isFocused ? "h-[100dvh] overflow-hidden" : ""
       }`}
     >
       {/* 3D bookshelf section takes full screen height */}
