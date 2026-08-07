@@ -129,7 +129,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 return (
                   <Link
                     key={product._id}
-                    href={`/product/${product._id}`}
+                    href={`/product/${product.handle || product._id}`}
                     onClick={onClose}
                     className="flex items-center gap-4 p-2 rounded-xl hover:bg-gray-50 transition-colors group"
                   >

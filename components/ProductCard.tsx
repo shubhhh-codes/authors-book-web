@@ -12,7 +12,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
   return (
     <Link
-      href={`/product/${product._id}`}
+      href={`/product/${product.handle || product._id}`}
       className="group block border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
       aria-label={`${product.title} – ₹${product.price}`}
     >

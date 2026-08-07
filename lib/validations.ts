@@ -180,6 +180,62 @@ export const AdminThemeUpdateSchema = z.object({
 
 export type AdminThemeUpdate = z.infer<typeof AdminThemeUpdateSchema>;
 
+// ── Admin Shelf Book Create / Update ──────────────────────────
+
+export const BookMotifEnum = z.enum([
+  'lattice',
+  'corrosion',
+  'efficiency',
+  'network',
+  'boom',
+  'organization',
+  'schematic',
+  'flight',
+  'circuit',
+  'orbit',
+  'branches',
+  'wave',
+  'runner',
+  'gather',
+  'maze',
+  'fracture',
+  'continuum',
+  'windows',
+  'steps',
+]);
+
+export const AdminShelfBookCreateSchema = z.object({
+  id: z.string().min(1, 'Book ID slug is required'),
+  title: z.string().min(1, 'Title is required'),
+  shortTitle: z.string().min(1, 'Short title is required'),
+  author: z.string().min(1, 'Author is required'),
+  description: z.string().optional().default(''),
+  quote: z.string().optional().default(''),
+  quoteBy: z.string().optional().default(''),
+  format: z.string().optional().default('Hardcover'),
+  availability: z.string().optional().default('Available now'),
+  url: z.string().optional().default('#'),
+  cover: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Cover must be a valid hex color (e.g. #2b6192)').optional().default('#2b6192'),
+  accent: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Accent must be a valid hex color').optional().default('#ffffff'),
+  ink: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Ink must be a valid hex color').optional().default('#ffffff'),
+  motif: BookMotifEnum.optional().default('orbit'),
+  height: z.number({ coerce: true }).positive('Height must be a positive number').optional().default(2.1),
+  thickness: z.number({ coerce: true }).positive('Thickness must be a positive number').optional().default(0.22),
+  coverImage: z.string().optional().default(''),
+  linkLabel: z.string().optional().default(''),
+  living: z.boolean().optional().default(false),
+  productId: z.string().optional().nullable(),
+  order: z.number({ coerce: true }).int().optional().default(0),
+  published: z.boolean().optional().default(true),
+});
+
+export type AdminShelfBookCreate = z.infer<typeof AdminShelfBookCreateSchema>;
+
+export const AdminShelfBookUpdateSchema = AdminShelfBookCreateSchema.partial();
+
+export type AdminShelfBookUpdate = z.infer<typeof AdminShelfBookUpdateSchema>;
+
+
 // ── Utility Functions ────────────────────────────────────────
 
 /**
@@ -224,4 +280,23 @@ export function getSafeErrorMessage(error: unknown): string {
     return error.message;
   }
   return 'An unexpected error occurred';
+}
+
+/**
+ * Generates an SEO-friendly human-readable handle/slug derived from Meta Title or Title.
+ * Strips brand suffixes like "| Authors Book", non-alphanumeric chars, and double hyphens.
+ */
+export function createSeoSlug(seoTitle?: string, title?: string): string {
+  const source = (seoTitle || title || '').trim();
+  if (!source) return `book-${Date.now()}`;
+
+  const cleaned = source
+    .replace(/\s*\|\s*Authors\s*Book.*$/i, '')
+    .replace(/\s*-\s*Authors\s*Book.*$/i, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return cleaned || `book-${Date.now()}`;
 }

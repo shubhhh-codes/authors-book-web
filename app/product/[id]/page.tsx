@@ -31,6 +31,10 @@ export default function ProductPage() {
         const data = await res.json();
         if (data && !data.error) {
           setProduct(data);
+          // SEO redirect: if accessed via raw MongoDB ObjectId, replace URL bar with human-readable handle
+          if (data.handle && params.id !== data.handle) {
+            router.replace(`/product/${data.handle}`);
+          }
         }
 
         const listRes = await fetch('/api/products');

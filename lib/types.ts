@@ -140,3 +140,32 @@ export interface RazorpayInstance {
 export interface RazorpayConstructor {
   new (options: Record<string, unknown>): RazorpayInstance;
 }
+
+export interface ShelfBook {
+  _id?: string;
+  id: string;
+  title: string;
+  shortTitle: string;
+  author: string;
+  description: string;
+  quote: string;
+  quoteBy: string;
+  format: string;
+  availability: string;
+  url: string;
+  cover: string;
+  accent: string;
+  ink: string;
+  motif: string;
+  height: number;
+  thickness: number;
+  coverImage?: string;
+  linkLabel?: string;
+  living?: boolean;
+  productId?: string | null;
+  order?: number;
+  published?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+

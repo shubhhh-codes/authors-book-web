@@ -269,7 +269,7 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
                   key={product._id}
                   className="group relative flex flex-col bg-[var(--paper-light)] border border-[var(--hairline)] rounded-2xl overflow-hidden hover:border-[var(--ink)] transition-all duration-300 shadow-2xs hover:shadow-md"
                 >
-                  <Link href={`/product/${product._id}`} className="block relative aspect-[3/4] bg-[var(--paper)] overflow-hidden">
+                  <Link href={`/product/${product.handle || product._id}`} className="block relative aspect-[3/4] bg-[var(--paper)] overflow-hidden">
                     {image ? (
                       <Image
                         src={image.url}
@@ -314,7 +314,7 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
                         </p>
                       )}
 
-                      <Link href={`/product/${product._id}`}>
+                      <Link href={`/product/${product.handle || product._id}`}>
                         <h3 className="text-sm sm:text-base font-normal text-[var(--ink)] line-clamp-2 leading-snug hover:text-[var(--accent)] transition-colors mt-0.5">
                           {product.title}
                         </h3>

@@ -499,7 +499,7 @@ canvas:focus-visible {
 
 .shelf-arrow {
   position: absolute;
-  z-index: 17;
+  z-index: 25;
   top: 49%;
   display: grid;
   width: 50px;
@@ -522,8 +522,8 @@ canvas:focus-visible {
 }
 
 .shelf-arrow:disabled {
-  cursor: default;
-  opacity: 0.25;
+  cursor: not-allowed;
+  opacity: 0.35;
 }
 
 .is-focused .shelf-arrow {

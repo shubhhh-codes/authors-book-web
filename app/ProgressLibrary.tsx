@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { catalog, findBookIndexBySlug } from "./catalog";
+import { catalog, findBookIndexBySlug, type CatalogBook } from "./catalog";
 import { ShelfEngine, type ShelfMode } from "./ShelfEngine";
 import { siteConfig } from "./site-config";
 
@@ -27,7 +27,6 @@ function getSlugFromLocation(): string | null {
   return null;
 }
 
-
 interface ProgressLibraryProps {
   initialSlug?: string;
   onFocusChange?: (isFocused: boolean) => void;
@@ -37,12 +36,37 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<ShelfEngine | null>(null);
 
+  const [booksData, setBooksData] = useState<CatalogBook[]>(catalog);
+
+  // Fetch dynamic shelf books from DB if available
+  useEffect(() => {
+    let active = true;
+    async function loadBooks() {
+      try {
+        const res = await fetch("/api/shelf-books");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active && Array.isArray(data) && data.length > 0) {
+          setBooksData(data);
+        }
+      } catch (err) {
+        console.error("Failed to load shelf books dynamically:", err);
+      }
+    }
+    void loadBooks();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Deep-link boot: when initialSlug is present, pre-seed React state so the
-  // very first paint renders in inspection mode (CSS class "is-focused",
-  // details panel visible, browse caption hidden, no preloader).
+  // very first paint renders in inspection mode
   const isDeepLink = Boolean(initialSlug);
-  const deepLinkIdx = initialSlug ? findBookIndexBySlug(initialSlug) : -1;
+  const deepLinkIdx = useMemo(() => {
+    if (!initialSlug) return -1;
+    const cleanSlug = decodeURIComponent(initialSlug).toLowerCase().trim();
+    return booksData.findIndex((b) => b.id.toLowerCase() === cleanSlug);
+  }, [initialSlug, booksData]);
 
   const [activeIndex, setActiveIndex] = useState(
     deepLinkIdx !== -1 ? deepLinkIdx : 0,
@@ -63,10 +87,11 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
   const [status, setStatus] = useState(
     isDeepLink ? "Loading volume" : "Preparing the complete catalog",
   );
-  const activeBook = catalog[activeIndex];
+
+  const activeBook = booksData[activeIndex] || booksData[0] || catalog[0];
   const selectedBook = useMemo(
-    () => (selectedIndex === null ? null : catalog[selectedIndex]),
-    [selectedIndex],
+    () => (selectedIndex === null ? null : booksData[selectedIndex] || null),
+    [selectedIndex, booksData],
   );
   const isFocused = mode !== "browse";
 
@@ -88,7 +113,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
       await document.fonts.ready;
       if (cancelled || !canvasRef.current) return;
 
-      engine = new ShelfEngine(canvasRef.current, catalog, {
+      engine = new ShelfEngine(canvasRef.current, booksData, {
         onActiveIndex: setActiveIndex,
         onMode: (nextMode, index) => {
           setMode(nextMode);
@@ -97,15 +122,13 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
           onFocusChange?.(isFocusedNow);
 
           if (typeof window !== "undefined") {
-            if (isFocusedNow && index !== null && catalog[index]) {
-              const bookSlug = catalog[index].id;
+            if (isFocusedNow && index !== null && booksData[index]) {
+              const bookSlug = booksData[index].id;
               const targetPath = `/book/${bookSlug}`;
               if (window.location.pathname !== targetPath) {
-                // Push history state so browser Back/Forward buttons work seamlessly
                 window.history.pushState({ bookSlug }, "", targetPath);
               }
             } else if (!isFocusedNow) {
-              // Push homepage history entry when returning to shelf
               if (window.location.pathname !== "/") {
                 window.history.pushState({ bookSlug: null }, "", "/");
               }
@@ -113,14 +136,8 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
           }
         },
         onStatus: setStatus,
-        // onReady fires synchronously inside the ShelfEngine constructor,
-        // BEFORE the `engine = new ShelfEngine(...)` assignment completes.
-        // So we only mark the UI as ready here; the actual focusBook call
-        // happens below, after the engine reference is fully assigned.
         onReady: () => {
           setReady(true);
-          // Mark this tab as having booted the shelf so that future navigations
-          // back to "/" (e.g., from a product page) skip the branded preloader.
           if (typeof window !== "undefined") {
             sessionStorage.setItem("shelf-ready", "1");
           }
@@ -128,12 +145,10 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
       });
       engineRef.current = engine;
 
-      // Deep-link: use focusBookInstant to skip ALL animation and place the
-      // engine directly into inspect mode on the first rendered frame.
-      // Regular navigation: use focusBook for the animated transition.
       const targetSlug = initialSlug || getSlugFromLocation();
       if (targetSlug) {
-        const initialIdx = findBookIndexBySlug(targetSlug);
+        const cleanTarget = decodeURIComponent(targetSlug).toLowerCase().trim();
+        const initialIdx = booksData.findIndex((b) => b.id.toLowerCase() === cleanTarget);
         if (initialIdx !== -1) {
           if (isDeepLink) {
             engine.focusBookInstant(initialIdx);
@@ -150,7 +165,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
       engine?.dispose();
       engineRef.current = null;
     };
-  }, [initialSlug]);
+  }, [initialSlug, booksData]);
 
   // Sync 3D bookshelf state with browser Back/Forward navigation
   useEffect(() => {
@@ -160,7 +175,8 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
 
       if (currentPath.startsWith("/book/")) {
         const slug = currentPath.replace("/book/", "");
-        const idx = findBookIndexBySlug(slug);
+        const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
+        const idx = booksData.findIndex((b) => b.id.toLowerCase() === cleanSlug);
         if (idx !== -1) {
           engineRef.current.focusBook(idx);
         }
@@ -173,7 +189,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, []);
+  }, [booksData]);
 
   return (
     <main
@@ -191,7 +207,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
         data-testid="shelf-canvas"
         role="application"
         tabIndex={0}
-        aria-label={`Interactive three-dimensional shelf of ${catalog.length} books. Drag or use the arrow keys to browse. Press Enter to inspect the selected book.`}
+        aria-label={`Interactive three-dimensional shelf of ${booksData.length} books. Drag or use the arrow keys to browse. Press Enter to inspect the selected book.`}
       />
 
       <header className="site-header">
@@ -216,7 +232,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
         <p className="eyebrow">
           <span>{String(activeIndex + 1).padStart(2, "0")}</span>
           <span className="eyebrow__line" />
-          <span>{String(catalog.length).padStart(2, "0")}</span>
+          <span>{String(booksData.length).padStart(2, "0")}</span>
         </p>
         <h1>{activeBook.shortTitle}</h1>
         <p className="browse-caption__author">{activeBook.author}</p>
@@ -248,7 +264,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
         className="shelf-arrow shelf-arrow--right"
         data-testid="browse-next"
         aria-label="Next book"
-        disabled={isFocused || activeIndex === catalog.length - 1}
+        disabled={isFocused || activeIndex === booksData.length - 1}
         onClick={() => engineRef.current?.browseBy(1)}
       >
         <ArrowIcon direction="right" />
@@ -256,7 +272,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
 
       <nav className="shelf-index" aria-label="Catalog position">
         <div className="shelf-index__ticks">
-          {catalog.map((book, index) => (
+          {booksData.map((book, index) => (
             <button
               key={book.id}
               type="button"
@@ -309,11 +325,11 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
                 ←
               </button>
               <span>{String(selectedIndex! + 1).padStart(2, "0")}</span>
-              <span>{String(catalog.length).padStart(2, "0")}</span>
+              <span>{String(booksData.length).padStart(2, "0")}</span>
               <button
                 type="button"
                 className="detail-nav-btn"
-                disabled={selectedIndex === catalog.length - 1}
+                disabled={selectedIndex === booksData.length - 1}
                 onClick={() => engineRef.current?.inspectNext(1)}
                 aria-label="Next book"
               >
@@ -345,18 +361,20 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
                 </div>
               </dl>
 
-              <a
-                className="official-link"
-                data-testid="official-link"
-                href={selectedBook.url}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <span>
-                  {selectedBook.linkLabel ?? siteConfig.bookLinkLabel}
-                </span>
-                <span aria-hidden="true">↗</span>
-              </a>
+              {selectedBook.url && selectedBook.url !== '#' && (
+                <a
+                  className="official-link"
+                  data-testid="official-link"
+                  href={selectedBook.url}
+                  target={selectedBook.url.startsWith('/') ? '_self' : '_blank'}
+                  rel="noreferrer"
+                >
+                  <span>
+                    {selectedBook.linkLabel || siteConfig.bookLinkLabel}
+                  </span>
+                  <span aria-hidden="true">↗</span>
+                </a>
+              )}
 
               <div className="focus-controls" aria-label="Inspection controls">
                 <span>Drag to orbit</span>
@@ -384,8 +402,6 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
         <span>{status}</span>
       </div>
 
-      {/* Preloader: only shown on homepage (browse mode boot).
-          Deep-link routes skip the branded splash entirely. */}
       {!isDeepLink && (
         <>
           <div className="loading-screen" aria-hidden={ready}>
