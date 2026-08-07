@@ -118,7 +118,7 @@ function toTexture(
   return texture;
 }
 
-function createLivingMaterial(color: string) {
+export function createLivingMaterial(color: string) {
   return new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
