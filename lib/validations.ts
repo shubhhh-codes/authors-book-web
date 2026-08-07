@@ -140,9 +140,9 @@ export const AdminProductUpdateSchema = z.object({
   sku: z.string().optional(),
   weight: z.number({ coerce: true }).optional(),
   inventory: z.object({
-    quantity: z.number({ coerce: true }).int().nonnegative(),
+    quantity: z.number({ coerce: true }).int().nonnegative().optional().default(10),
     policy: z.string().optional().default('deny'),
-  }).optional(),
+  }).optional().default({ quantity: 10, policy: 'deny' }),
   images: z.array(z.string()).optional(),
   published: z.boolean().optional(),
   seoTitle: z.string().optional(),

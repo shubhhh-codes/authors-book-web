@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -18,6 +18,8 @@ const GENRE_PRESETS = ['Poetry', 'Literature', 'Arts & Music', 'Fiction', 'Non-F
 export default function NewProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -43,6 +45,11 @@ export default function NewProductPage() {
     seoTitle: '',
     seoDescription: '',
   });
+
+  // Prefetch products list for instantaneous navigation after creation
+  useEffect(() => {
+    router.prefetch('/admin/products');
+  }, [router]);
 
   const generateSingleSku = (type: string) => {
     const prefix = type === 'bookmark' ? 'AB-BM' : 'AB-BOOK';
@@ -98,6 +105,7 @@ export default function NewProductPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessToast(null);
 
     try {
       const res = await fetch('/api/admin/products', {
@@ -118,7 +126,9 @@ export default function NewProductPage() {
 
       if (res.ok && data.success) {
         if (redirectAfterSave) {
+          setSaveSuccess(true);
           router.push('/admin/products');
+          router.refresh();
         } else {
           // Reset form for adding another product
           setFormData({
@@ -144,26 +154,27 @@ export default function NewProductPage() {
             seoTitle: '',
             seoDescription: '',
           });
-          alert('Product saved successfully! Ready to add another.');
+          setSuccessToast('✓ Product created successfully! Ready to add another.');
+          setLoading(false);
         }
       } else {
         setError(data.error || 'Failed to create product');
+        setLoading(false);
       }
     } catch {
       setError('Something went wrong. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+    <div className="max-w-6xl mx-auto space-y-6 pb-12 animate-admin-fade">
       {/* Top Header & Sticky Save Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-2xs">
         <div className="flex items-center gap-3">
           <Link
             href="/admin/products"
-            className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-600 hover:text-black transition-colors"
+            className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-600 hover:text-black transition-all hover:-translate-x-0.5 active:scale-95"
             title="Back to products list"
           >
             ← Back
@@ -181,25 +192,41 @@ export default function NewProductPage() {
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            disabled={loading}
+            disabled={loading || saveSuccess}
             onClick={(e) => void handleSubmit(e, false)}
-            className="bg-gray-100 text-gray-800 hover:bg-gray-200 text-xs font-semibold px-4 py-2.5 rounded-lg border border-gray-300 transition-colors disabled:opacity-50"
+            className="bg-gray-100 text-gray-800 hover:bg-gray-200 text-xs font-semibold px-4 py-2.5 rounded-lg border border-gray-300 transition-all active:scale-95 disabled:opacity-50"
           >
             Save &amp; Add Another
           </button>
           <button
             type="button"
-            disabled={loading}
+            disabled={loading || saveSuccess}
             onClick={(e) => void handleSubmit(e, true)}
-            className="bg-[#1a1a1a] text-white hover:bg-black text-xs font-semibold px-5 py-2.5 rounded-lg transition-colors shadow-2xs disabled:opacity-50 flex items-center gap-1.5"
+            className={`text-xs font-semibold px-5 py-2.5 rounded-lg transition-all shadow-2xs flex items-center gap-1.5 active:scale-95 ${
+              saveSuccess
+                ? 'bg-emerald-600 text-white border border-emerald-600 font-bold animate-pulse-success'
+                : 'bg-[#1a1a1a] text-white hover:bg-black disabled:opacity-60'
+            }`}
           >
-            {loading ? 'Saving Product...' : 'Save Product'}
+            {loading && !saveSuccess && (
+              <svg className="w-3.5 h-3.5 btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="12" />
+              </svg>
+            )}
+            {saveSuccess ? '✓ Created! Redirecting...' : loading ? 'Saving Product...' : 'Save Product'}
           </button>
         </div>
       </div>
 
+      {successToast && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold rounded-xl flex items-center justify-between animate-admin-fade">
+          <span>{successToast}</span>
+          <button onClick={() => setSuccessToast(null)} className="text-emerald-700 hover:text-emerald-950 text-sm font-bold">×</button>
+        </div>
+      )}
+
       {error && (
-        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium rounded-xl flex items-center justify-between">
+        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium rounded-xl flex items-center justify-between animate-admin-fade">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="text-rose-500 hover:text-rose-800 text-sm font-bold">×</button>
         </div>

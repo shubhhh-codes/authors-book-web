@@ -8,7 +8,10 @@ export const dynamic = 'force-dynamic';
 async function getAdminProducts(): Promise<ProductType[]> {
   try {
     await connectDB();
-    const docs = await Product.find({}).sort({ createdAt: -1 }).lean<ProductType[]>();
+    const docs = await Product.find({})
+      .select('title price compareAtPrice vendor category type genre tags published sku inventory images createdAt updatedAt')
+      .sort({ createdAt: -1 })
+      .lean<ProductType[]>();
     return JSON.parse(JSON.stringify(docs));
   } catch (err) {
     console.error('getAdminProducts error:', err);
