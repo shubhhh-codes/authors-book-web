@@ -171,7 +171,7 @@ export default function AdminProductsClient({ initialProducts }: AdminProductsCl
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-admin-fade">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -183,7 +183,7 @@ export default function AdminProductsClient({ initialProducts }: AdminProductsCl
 
         <Link
           href="/admin/products/new"
-          className="bg-[#1a1a1a] text-white hover:bg-black text-xs font-semibold px-4 py-2.5 rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 shadow-xs"
+          className="bg-[#1a1a1a] text-white hover:bg-black text-xs font-semibold px-4 py-2.5 rounded-lg transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-md"
         >
           <span>+ Add Product</span>
         </Link>
@@ -473,8 +473,8 @@ export default function AdminProductsClient({ initialProducts }: AdminProductsCl
                   return (
                     <tr
                       key={idStr}
-                      className={`transition-colors ${
-                        isChecked ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-gray-50/80'
+                      className={`transition-all admin-row-hover ${
+                        isChecked ? 'bg-amber-50/70 hover:bg-amber-50' : 'hover:bg-gray-50/80'
                       }`}
                     >
                       <td className="py-3 px-4">

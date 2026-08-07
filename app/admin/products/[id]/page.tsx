@@ -11,7 +11,9 @@ export default function EditProductPage() {
   const params = useParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -36,6 +38,11 @@ export default function EditProductPage() {
     seoTitle: '',
     seoDescription: '',
   });
+
+  // Prefetch products catalog for instant navigation after saving/deleting
+  useEffect(() => {
+    router.prefetch('/admin/products');
+  }, [router]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -104,7 +111,7 @@ export default function EditProductPage() {
           ...formData,
           price: Number(formData.price),
           compareAtPrice: formData.compareAtPrice ? Number(formData.compareAtPrice) : undefined,
-          inventory: { quantity: Number(formData.quantity) },
+          inventory: { quantity: Number(formData.quantity), policy: 'deny' },
           tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()) : [],
           images: formData.imageUrl ? [formData.imageUrl] : [],
         }),
@@ -112,13 +119,15 @@ export default function EditProductPage() {
 
       const data = await res.json();
       if (res.ok && data.success) {
+        setSaveSuccess(true);
         router.push('/admin/products');
+        router.refresh();
       } else {
         setError(data.error || 'Failed to update product');
+        setSaving(false);
       }
     } catch {
       setError('Something went wrong. Please try again.');
-    } finally {
       setSaving(false);
     }
   };
@@ -132,29 +141,38 @@ export default function EditProductPage() {
         method: 'DELETE',
       });
       if (res.ok) {
+        setDeleteSuccess(true);
         router.push('/admin/products');
+        router.refresh();
       } else {
         alert('Failed to delete product');
+        setDeleting(false);
       }
     } catch {
       alert('Error deleting product');
-    } finally {
       setDeleting(false);
     }
   };
 
   if (loading) {
-    return <div className="py-20 text-center text-xs text-gray-500 font-medium">Loading product details...</div>;
+    return (
+      <div className="py-20 text-center text-xs text-gray-500 font-medium animate-admin-fade flex items-center justify-center gap-2">
+        <svg className="w-4 h-4 btn-spinner text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="12" />
+        </svg>
+        <span>Loading product details...</span>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 animate-admin-fade">
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
             href="/admin/products"
-            className="p-1.5 rounded-lg border border-gray-300 hover:border-black text-gray-600 hover:text-black transition-colors"
+            className="p-1.5 rounded-lg border border-gray-300 hover:border-black text-gray-600 hover:text-black transition-all hover:-translate-x-0.5 active:scale-95"
           >
             ← Back
           </Link>
@@ -165,19 +183,37 @@ export default function EditProductPage() {
           <button
             type="button"
             onClick={handleDelete}
-            disabled={deleting}
-            className="bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold px-4 py-2.5 rounded-lg transition-colors border border-rose-200"
+            disabled={deleting || deleteSuccess}
+            className={`text-xs font-semibold px-4 py-2.5 rounded-lg transition-all border shadow-2xs flex items-center gap-1.5 active:scale-95 ${
+              deleteSuccess
+                ? 'bg-rose-600 text-white border-rose-600 font-bold'
+                : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200'
+            }`}
           >
-            {deleting ? 'Deleting...' : 'Delete Product'}
+            {deleting && (
+              <svg className="w-3.5 h-3.5 btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="12" />
+              </svg>
+            )}
+            {deleteSuccess ? '✓ Deleted! Redirecting...' : deleting ? 'Deleting...' : 'Delete Product'}
           </button>
 
           <button
             type="button"
             onClick={handleUpdate}
-            disabled={saving}
-            className="bg-[#1a1a1a] text-white hover:bg-black text-xs font-semibold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+            disabled={saving || saveSuccess}
+            className={`text-xs font-semibold px-5 py-2.5 rounded-lg transition-all shadow-2xs flex items-center gap-1.5 active:scale-95 ${
+              saveSuccess
+                ? 'bg-emerald-600 text-white border border-emerald-600 font-bold animate-pulse-success'
+                : 'bg-[#1a1a1a] text-white hover:bg-black disabled:opacity-60'
+            }`}
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving && !saveSuccess && (
+              <svg className="w-3.5 h-3.5 btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="12" />
+              </svg>
+            )}
+            {saveSuccess ? '✓ Saved! Redirecting...' : saving ? 'Saving Changes...' : 'Save Changes'}
           </button>
         </div>
       </div>
