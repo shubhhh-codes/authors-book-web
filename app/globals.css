@@ -259,14 +259,16 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-button,
-a {
-  color: inherit;
-  font: inherit;
-}
+@layer base {
+  button,
+  a {
+    color: inherit;
+    font: inherit;
+  }
 
-button {
-  border: 0;
+  button {
+    border: 0;
+  }
 }
 
 button:focus-visible,
@@ -286,10 +288,14 @@ canvas:focus-visible {
   width: 100%;
   height: 100dvh;
   isolation: isolate;
-  overflow: hidden;
+  overflow: visible;
   background:
     radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.28), transparent 46%),
     var(--paper);
+}
+
+.press-experience.is-focused {
+  overflow: hidden;
 }
 
 .press-experience::after {
@@ -313,14 +319,14 @@ canvas:focus-visible {
   display: block;
   width: 100%;
   height: 100%;
-  cursor: grab;
-  touch-action: none;
+  cursor: default;
+  touch-action: pan-y;
   opacity: 0;
   transition: opacity 900ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .shelf-canvas.is-dragging {
-  cursor: grabbing !important;
+  cursor: default;
 }
 
 .is-ready .shelf-canvas {
@@ -377,13 +383,17 @@ canvas:focus-visible {
 
 .browse-caption {
   position: absolute;
+  z-index: 20;
   bottom: clamp(178px, 23vh, 228px);
   left: clamp(24px, 5.4vw, 92px);
   width: min(430px, 36vw);
   padding-left: 60px;
   pointer-events: none;
+  touch-action: pan-y;
+  transform: translate3d(0, 0, 0);
+  will-change: opacity, transform;
   transition:
-    opacity 420ms ease,
+    opacity 420ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -405,11 +415,18 @@ canvas:focus-visible {
     rgba(238, 232, 219, 0) 100%
   );
   pointer-events: none;
+  touch-action: pan-y;
 }
 
 .browse-caption > * {
   position: relative;
   z-index: 20;
+  pointer-events: none;
+  touch-action: pan-y;
+}
+
+.browse-caption .inspect-button {
+  pointer-events: auto;
 }
 
 .is-focused .browse-caption {
@@ -578,12 +595,12 @@ canvas:focus-visible {
   position: absolute;
   z-index: 19;
   right: clamp(24px, 5vw, 82px);
-  bottom: 34px;
+  bottom: 12px;
   left: clamp(24px, 5vw, 82px);
   display: grid;
   grid-template-columns: minmax(280px, 1fr) auto;
   gap: 38px;
-  align-items: end;
+  align-items: center;
   transition:
     opacity 300ms ease,
     transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -630,7 +647,7 @@ canvas:focus-visible {
   width: 1px;
   height: 7px;
   background: var(--ink);
-  opacity: 0.48;
+  opacity: 0.65;
   transition:
     height 220ms ease,
     opacity 220ms ease,
@@ -642,18 +659,23 @@ canvas:focus-visible {
   width: 2px;
   height: 18px;
   opacity: 1;
+  background: var(--ink);
 }
 
 .input-hint {
   display: flex;
   gap: 11px;
   align-items: center;
-  padding-bottom: 1px;
-  color: var(--ink-soft);
+  padding: 4px 12px;
+  color: var(--ink);
   white-space: nowrap;
-  font-size: 8px;
-  font-weight: 600;
+  font-size: 9px;
+  font-weight: 650;
   letter-spacing: 0.14em;
+  background: rgba(238, 232, 219, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--hairline);
+  border-radius: 99px;
 }
 
 .input-hint i {
@@ -670,12 +692,13 @@ canvas:focus-visible {
   right: 0;
   width: min(620px, 41vw);
   height: 100%;
+  overflow: hidden;
   opacity: 0;
   pointer-events: none;
   transform: translateX(44px);
   transition:
-    opacity 420ms ease 80ms,
-    transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 380ms cubic-bezier(0.4, 0, 1, 1),
+    transform 520ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .book-details::before {
@@ -694,14 +717,47 @@ canvas:focus-visible {
   transform: translateX(0);
 }
 
+/* During the return animation, immediately start sliding the detail panel out */
+.is-returning .book-details {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(52px);
+  transition:
+    opacity 260ms cubic-bezier(0.4, 0, 1, 1),
+    transform 380ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Shelf browse UI fades back in during the return animation with a slight delay */
+.is-returning .shelf-index {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 400ms ease 180ms,
+    transform 500ms cubic-bezier(0.22, 1, 0.36, 1) 180ms;
+}
+
+.is-returning .browse-caption {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 420ms cubic-bezier(0.22, 1, 0.36, 1) 100ms,
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1) 100ms;
+}
+
+.is-returning .shelf-arrow {
+  opacity: 1;
+  transition: opacity 350ms ease 160ms;
+}
+
 .book-details__inner {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
   height: 100%;
   padding: 27px clamp(28px, 4vw, 68px) 30px clamp(52px, 6vw, 98px);
   border-left: 1px solid rgba(37, 35, 31, 0.08);
   position: relative;
   z-index: 20;
+  overflow: hidden;
 }
 
 .back-button {
@@ -776,8 +832,27 @@ canvas:focus-visible {
   max-height: 100%;
   padding: 34px 0;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--hairline) transparent;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  animation: fadeInCopy 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.book-details__copy::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@keyframes fadeInCopy {
+  from {
+    opacity: 0.15;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .book-details__copy .eyebrow {
@@ -901,7 +976,8 @@ canvas:focus-visible {
   gap: 14px;
   align-items: center;
   justify-content: space-between;
-  padding-top: 16px;
+  margin-top: 32px;
+  padding-top: 18px;
   border-top: 1px solid var(--hairline);
   color: var(--ink-soft);
   font-size: 8px;
@@ -969,61 +1045,147 @@ canvas:focus-visible {
   place-content: center;
   justify-items: center;
   background: var(--paper);
-  transition:
-    opacity 720ms ease 120ms,
-    visibility 720ms ease 120ms;
+  transition: transform 1.2s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.curtain-layer {
+  position: absolute;
+  z-index: 39;
+  inset: 0;
+  background: var(--paper-deep);
+  transition: transform 1.2s cubic-bezier(0.76, 0, 0.24, 1) 0.1s;
 }
 
 .is-ready .loading-screen {
-  visibility: hidden;
-  opacity: 0;
+  transform: translateY(-100%);
 }
 
-.loading-screen__mark {
+.is-ready .curtain-layer {
+  transform: translateY(-100%);
+}
+
+.bookshelf-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.bookshelf-loader__books {
   display: flex;
   gap: 5px;
   align-items: flex-end;
-  height: 62px;
+  height: 65px;
+  padding-bottom: 2px;
+  position: relative;
 }
 
-.loading-screen__mark span {
+.bookshelf-loader__shelf {
+  width: 136px;
+  height: 4px;
+  background: #5a4132;
+  border-radius: 2px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.book-spine {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 2px;
+  border-radius: 2px 2px 0 0;
+  box-shadow: inset -1px 0 2px rgba(0, 0, 0, 0.25), inset 1px 0 1px rgba(255, 255, 255, 0.2);
+  animation: pullBook 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.book-spine__stripe {
   display: block;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 1px;
+}
+
+.book-spine__bookmark {
+  position: absolute;
+  bottom: -9px;
+  right: 3px;
+  width: 3px;
+  height: 10px;
+  background: #bf493f;
+  border-radius: 0 0 1px 1px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Book 1: Deep Navy */
+.book-spine--1 {
   width: 13px;
-  background: var(--ink);
-  animation: assemble 1.25s ease-in-out infinite alternate;
+  height: 52px;
+  background: #1c304b;
+  animation-delay: 0s;
 }
 
-.loading-screen__mark span:nth-child(1) {
-  height: 46px;
+/* Book 2: Terracotta Red (with hanging bookmark) */
+.book-spine--2 {
+  width: 15px;
+  height: 62px;
+  background: #bf493f;
+  animation-delay: 0.38s;
 }
 
-.loading-screen__mark span:nth-child(2) {
-  height: 59px;
-  animation-delay: -0.42s;
+/* Book 3: Vintage Cream */
+.book-spine--3 {
+  width: 12px;
+  height: 48px;
+  background: #e8ddc6;
+  border: 1px solid rgba(37, 35, 31, 0.15);
+  animation-delay: 0.76s;
+}
+.book-spine--3 .book-spine__stripe {
+  background: rgba(37, 35, 31, 0.35);
 }
 
-.loading-screen__mark span:nth-child(3) {
-  height: 39px;
-  animation-delay: -0.78s;
+/* Book 4: Forest Green */
+.book-spine--4 {
+  width: 14px;
+  height: 57px;
+  background: #2b5941;
+  animation-delay: 1.14s;
 }
 
-.loading-screen p {
-  margin: 19px 0 0;
-  font-size: 9px;
-  font-weight: 620;
-  letter-spacing: 0.17em;
+/* Book 5: Warm Gold / Amber */
+.book-spine--5 {
+  width: 13px;
+  height: 44px;
+  background: #d49a37;
+  animation-delay: 1.52s;
+}
+
+@keyframes pullBook {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+  25% {
+    transform: translateY(-9px) scale(1.03);
+    filter: brightness(1.12);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15), inset -1px 0 2px rgba(0, 0, 0, 0.25);
+  }
+  50% {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+}
+
+.loading-screen__branding {
+  margin: 22px 0 0;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-}
-
-@keyframes assemble {
-  from {
-    opacity: 0.45;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  color: var(--ink);
 }
 
 .independent-note {
@@ -1166,7 +1328,8 @@ canvas:focus-visible {
 
   .shelf-index {
     right: 72px;
-    bottom: 68px;
+    /* bottom: 24px; */
+    bottom: 90px;
     left: 72px;
     display: block;
   }
@@ -1194,34 +1357,49 @@ canvas:focus-visible {
   }
 
   .book-details {
-    top: auto;
+    top: 0;
     bottom: 0;
+    left: 0;
+    right: 0;
     width: 100%;
-    height: min(49dvh, 500px);
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     opacity: 0;
+    pointer-events: none;
     transform: translateY(100%);
     z-index: 22;
+    transition:
+      opacity 380ms cubic-bezier(0.4, 0, 1, 1),
+      transform 520ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .book-details::-webkit-scrollbar {
+    display: none;
   }
 
   .book-details::before {
-    top: -55px;
-    background:
-      linear-gradient(180deg, rgba(238, 232, 219, 0) 0%, var(--paper) 100%),
-      var(--paper);
-    z-index: -1;
+    display: none;
   }
 
   .is-focused .book-details {
     opacity: 1;
+    pointer-events: none;
     transform: translateY(0);
   }
 
   .book-details__inner {
+    pointer-events: auto;
+    margin-top: 48dvh;
+    min-height: 52dvh;
+    background: var(--paper);
+    box-shadow: 0 -8px 24px rgba(37, 35, 31, 0.08);
     grid-template-columns: 1fr auto;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    padding: 9px 20px max(14px, env(safe-area-inset-bottom));
-    border-top: 1px solid;
-    border-image: linear-gradient(to right, rgba(37, 35, 31, 0.08) 0%, rgba(37, 35, 31, 0.04) 50%, rgba(37, 35, 31, 0) 90%) 1;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 16px 20px max(24px, env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(37, 35, 31, 0.1);
     border-left: 0;
     position: relative;
     z-index: 20;
@@ -1246,7 +1424,8 @@ canvas:focus-visible {
     grid-column: 1 / -1;
     grid-row: 2;
     align-self: auto;
-    padding: 25px 0 18px;
+    overflow: visible;
+    padding: 20px 0 18px;
   }
 
   .book-details__copy .eyebrow {
@@ -1281,8 +1460,7 @@ canvas:focus-visible {
   }
 
   .focus-controls {
-    grid-column: 1 / -1;
-    grid-row: 3;
+    margin-top: 24px;
   }
 
   .focus-controls span:nth-child(2) {

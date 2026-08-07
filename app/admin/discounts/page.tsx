@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import type { Discount } from '@/lib/types';
 
 export default function AdminDiscountsPage() {
-  const [discounts, setDiscounts] = useState<any[]>([]);
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -103,7 +104,7 @@ export default function AdminDiscountsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 font-medium">
-                {discounts.map((d: any) => (
+                {discounts.map((d: Discount) => (
                   <tr key={d._id} className="hover:bg-gray-50/80 transition-colors">
                     <td className="py-3.5 px-4 font-bold text-gray-900 tracking-wide">{d.code}</td>
                     <td className="py-3.5 px-4 text-gray-600 capitalize">{d.discountType}</td>

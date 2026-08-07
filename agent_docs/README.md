@@ -14,6 +14,7 @@ Quick-reference index for Claude Code navigating authorsbook-web.
 | [database_schema.md](./database_schema.md) | Add fields, write queries, or trace data shape |
 | [api_patterns.md](./api_patterns.md) | Add a new API route or modify existing ones |
 | [deployment.md](./deployment.md) | Deploy to production or configure env vars |
+| [whatsapp_integration.md](./whatsapp_integration.md) | Set up, configure, and troubleshoot WhatsApp Cloud API integration |
 
 ## File Map (Fast Reference)
 

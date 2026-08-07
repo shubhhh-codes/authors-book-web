@@ -1,37 +1,37 @@
-import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import ThemeSetting from '@/lib/schemas/ThemeSetting';
+import { AdminThemeUpdateSchema, parseRequestBody, errorResponse, successResponse, getSafeErrorMessage } from '@/lib/validations';
 
-// GET active theme settings
-export async function GET() {
+export async function GET(): Promise<Response> {
   try {
     await connectDB();
     let settings = await ThemeSetting.findOne({}).lean();
     if (!settings) {
       settings = await ThemeSetting.create({});
     }
-    return NextResponse.json(settings);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return successResponse(settings);
+  } catch (error) {
+    console.error('Admin GET theme error:', error);
+    return errorResponse(getSafeErrorMessage(error), 500);
   }
 }
 
-// POST save theme settings
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<Response> {
   try {
     await connectDB();
-    const body = await request.json();
+    const data = await parseRequestBody(request, AdminThemeUpdateSchema);
 
     let settings = await ThemeSetting.findOne({});
     if (settings) {
-      Object.assign(settings, body, { updatedAt: new Date() });
+      Object.assign(settings, data, { updatedAt: new Date() });
       await settings.save();
     } else {
-      settings = await ThemeSetting.create(body);
+      settings = await ThemeSetting.create(data);
     }
 
-    return NextResponse.json({ success: true, settings });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return successResponse({ success: true, settings });
+  } catch (error) {
+    console.error('Admin POST theme error:', error);
+    return errorResponse(getSafeErrorMessage(error), 500);
   }
 }

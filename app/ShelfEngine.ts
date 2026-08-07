@@ -73,7 +73,7 @@ const pageColor = new THREE.Color("#e9dfca");
 const shelfColor = new THREE.Color("#5a4132");
 const clamp = THREE.MathUtils.clamp;
 const focusInDuration = 0.46;
-const focusOutDuration = 0.34;
+const focusOutDuration = 0.52;
 const desktopDetailWidthRatio = 0.41;
 const compactDetailWidthRatio = 0.48;
 const desktopDetailMaxWidth = 620;
@@ -182,12 +182,17 @@ export class ShelfEngine {
   private scrollIndex = 0;
   private targetScrollIndex = 0;
   private focusProgress = 0;
+  private isInspectingSwitch = false;
   private lastInputTime = 0;
   private pointerDown = false;
   private pointerId: number | null = null;
   private pointerStartX = 0;
+  private pointerStartY = 0;
   private pointerLastX = 0;
+  private pointerLastY = 0;
   private pointerTravel = 0;
+  private isAxisLocked = false;
+  private isVerticalScroll = false;
   private reducedMotion = false;
   private assetCount = 0;
   private assetFailures = 0;
@@ -204,6 +209,12 @@ export class ShelfEngine {
   private lastTimestamp = 0;
   private lastDiagnosticsAt = 0;
   private isDisposed = false;
+  private detailScrollProgress = 0;
+  private currentScrollProgress = 0;
+
+  public setDetailScrollProgress(progress: number) {
+    this.detailScrollProgress = clamp(progress, 0, 1);
+  }
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -233,16 +244,22 @@ export class ShelfEngine {
     this.camera.lookAt(browseTarget);
 
     this.controls = new OrbitControls(this.camera, this.canvas);
+    // OrbitControls.connect() sets canvas.style.touchAction = 'none' which
+    // blocks ALL native touch gestures (including page scroll). Override it
+    // back to 'pan-y' so mobile vertical scrolling works natively.
+    this.canvas.style.touchAction = 'pan-y';
     this.controls.enabled = false;
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.075;
     this.controls.enablePan = true;
     this.controls.screenSpacePanning = true;
     this.controls.enableZoom = true;
-    this.controls.minDistance = 2.7;
-    this.controls.maxDistance = 7.2;
-    this.controls.minPolarAngle = Math.PI * 0.22;
-    this.controls.maxPolarAngle = Math.PI * 0.78;
+    this.controls.minDistance = 1.5;
+    this.controls.maxDistance = 12.0;
+    this.controls.minPolarAngle = 0;
+    this.controls.maxPolarAngle = Math.PI;
+    this.controls.minAzimuthAngle = -Infinity;
+    this.controls.maxAzimuthAngle = Infinity;
 
     this.resizeObserver = new ResizeObserver(this.handleResize);
     this.setupScene();
@@ -619,30 +636,67 @@ export class ShelfEngine {
     window.addEventListener("blur", this.handleWindowBlur);
   }
 
+  private isPointerOverBookshelf(event: WheelEvent): boolean {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    this.pointer.set(x, y);
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+
+    const intersects = this.raycaster.intersectObjects(this.pickTargets, true);
+    return intersects.length > 0;
+  }
+
   private handleWheel = (event: WheelEvent) => {
     if (this.mode !== "browse") return;
-    event.preventDefault();
-    this.pendingFocusIndex = null;
-    const dominant =
-      Math.abs(event.deltaX) > Math.abs(event.deltaY)
-        ? event.deltaX
-        : event.deltaY;
-    this.targetScrollIndex = clamp(
-      this.targetScrollIndex + dominant * 0.0024,
-      0,
-      this.runtimeBooks.length - 1,
-    );
-    this.lastInputTime = performance.now();
+
+    const isOverBookshelf = this.isPointerOverBookshelf(event);
+
+    if (isOverBookshelf) {
+      event.preventDefault();
+      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      this.pendingFocusIndex = null;
+      this.targetScrollIndex = clamp(
+        this.targetScrollIndex + delta * 0.0024,
+        0,
+        this.runtimeBooks.length - 1,
+      );
+      this.lastInputTime = performance.now();
+    }
   };
 
   private handlePointerDown = (event: PointerEvent) => {
     if (this.mode !== "browse") return;
+    if (event.isPrimary === false) {
+      this.pointerDown = false;
+      return;
+    }
+
+    if (event.pointerType === "touch") {
+      this.updatePointer(event);
+      const hit = this.raycastBook();
+      if (hit === null) {
+        // Touch started outside any book on mobile -> do not intercept in JS, allow native page scroll
+        this.pointerDown = false;
+        return;
+      }
+    }
+
     this.pointerDown = true;
     this.pointerId = event.pointerId;
     this.pointerStartX = event.clientX;
+    this.pointerStartY = event.clientY;
     this.pointerLastX = event.clientX;
+    this.pointerLastY = event.clientY;
     this.pointerTravel = 0;
-    this.canvas.setPointerCapture(event.pointerId);
+    this.isAxisLocked = false;
+    this.isVerticalScroll = false;
+    if (event.pointerType !== 'touch') {
+      try {
+        this.canvas.setPointerCapture(event.pointerId);
+      } catch {}
+    }
   };
 
   private handlePointerMove = (event: PointerEvent) => {
@@ -650,17 +704,57 @@ export class ShelfEngine {
     if (this.mode !== "browse") return;
 
     if (this.pointerDown && event.pointerId === this.pointerId) {
+      if (event.isPrimary === false) {
+        this.pointerDown = false;
+        return;
+      }
+      const deltaX = event.clientX - this.pointerLastX;
+      const deltaY = event.clientY - this.pointerLastY;
+      const totalX = Math.abs(event.clientX - this.pointerStartX);
+      const totalY = Math.abs(event.clientY - this.pointerStartY);
+
+      const dragThreshold = event.pointerType === 'touch' ? 4 : 6;
+
+      if (!this.isAxisLocked && (totalX > dragThreshold || totalY > dragThreshold)) {
+        this.isAxisLocked = true;
+        if (totalY >= totalX * 0.7) {
+          // Vertical swipe detected -> allow browser native page scroll
+          this.isVerticalScroll = true;
+          this.pointerDown = false;
+          if (this.canvas.hasPointerCapture(event.pointerId)) {
+            try {
+              this.canvas.releasePointerCapture(event.pointerId);
+            } catch {}
+          }
+          return;
+        } else {
+          // Horizontal swipe detected -> lock to 3D shelf scrolling
+          this.isVerticalScroll = false;
+          if (event.pointerType !== 'touch' && !this.canvas.hasPointerCapture(event.pointerId)) {
+            try {
+              this.canvas.setPointerCapture(event.pointerId);
+            } catch {}
+          }
+        }
+      }
+
+      if (this.isVerticalScroll) {
+        this.pointerDown = false;
+        return;
+      }
+
       this.pendingFocusIndex = null;
-      const delta = event.clientX - this.pointerLastX;
       this.pointerLastX = event.clientX;
-      this.pointerTravel += Math.abs(delta);
+      this.pointerLastY = event.clientY;
+      this.pointerTravel += Math.abs(deltaX);
       this.targetScrollIndex = clamp(
-        this.targetScrollIndex - delta / Math.max(105, this.canvas.clientWidth * 0.11),
+        this.targetScrollIndex - deltaX / Math.max(105, this.canvas.clientWidth * 0.11),
         0,
         this.runtimeBooks.length - 1,
       );
       this.lastInputTime = performance.now();
       this.canvas.classList.add("is-dragging");
+      this.canvas.style.cursor = "grabbing";
       return;
     }
 
@@ -669,24 +763,37 @@ export class ShelfEngine {
 
   private handlePointerUp = (event: PointerEvent) => {
     if (event.pointerId !== this.pointerId) return;
-    const wasClick = this.pointerTravel < 7 && Math.abs(event.clientX - this.pointerStartX) < 7;
+    const wasClick =
+      this.pointerTravel < 7 &&
+      Math.abs(event.clientX - this.pointerStartX) < 7 &&
+      Math.abs(event.clientY - this.pointerStartY) < 7;
     this.pointerDown = false;
     this.pointerId = null;
+    this.isAxisLocked = false;
+    this.isVerticalScroll = false;
     this.canvas.classList.remove("is-dragging");
     if (this.canvas.hasPointerCapture(event.pointerId)) {
-      this.canvas.releasePointerCapture(event.pointerId);
+      try {
+        this.canvas.releasePointerCapture(event.pointerId);
+      } catch {}
     }
     if (this.mode === "browse" && wasClick) {
       this.updatePointer(event);
       const hit = this.raycastBook();
       if (hit !== null) this.focusBook(hit);
     }
+    // Restore cursor after drag ends
+    this.updatePointer(event);
+    const postDragHit = this.raycastBook();
+    this.canvas.style.cursor = postDragHit !== null ? "grab" : "default";
   };
 
   private handlePointerCancel = (event: PointerEvent) => {
     if (event.pointerId !== this.pointerId) return;
     this.pointerDown = false;
     this.pointerId = null;
+    this.isAxisLocked = false;
+    this.isVerticalScroll = false;
     this.canvas.classList.remove("is-dragging");
   };
 
@@ -695,7 +802,7 @@ export class ShelfEngine {
       this.runtimeBooks.forEach((book) => {
         book.targetHover = 0;
       });
-      this.canvas.style.cursor = "grab";
+      this.canvas.style.cursor = "default";
     }
   };
 
@@ -763,7 +870,7 @@ export class ShelfEngine {
     this.runtimeBooks.forEach((book) => {
       book.targetHover = book.index === hit ? 1 : 0;
     });
-    this.canvas.style.cursor = hit === null ? "grab" : "pointer";
+    this.canvas.style.cursor = hit === null ? "default" : "grab";
   }
 
   private xAtIndex(index: number) {
@@ -977,14 +1084,24 @@ export class ShelfEngine {
       );
       this.camera.lookAt(browseTarget);
     } else if (this.mode === "focusing") {
+      const switchFactor = this.isInspectingSwitch ? 5.5 : 14;
+      const duration = this.isInspectingSwitch ? 0.75 : focusInDuration;
+
+      this.scrollIndex = damp(
+        this.scrollIndex,
+        this.targetScrollIndex,
+        switchFactor,
+        delta,
+      );
       this.focusProgress = clamp(
         this.focusProgress +
-          delta / (this.reducedMotion ? 0.08 : focusInDuration),
+          delta / (this.reducedMotion ? 0.08 : duration),
         0,
         1,
       );
       this.updateFocusCamera(delta);
       if (this.focusProgress >= 1) {
+        this.isInspectingSwitch = false;
         this.mode = "inspect";
         this.controls.enabled = true;
         this.controls.target.copy(this.focusCameraTarget);
@@ -1045,7 +1162,10 @@ export class ShelfEngine {
       this.mode === "returning"
         ? this.focusProgress
         : easeOutCubic(this.focusProgress);
-    const isolated = this.selectedIndex !== null && motionFocus > 0.72;
+    const isolated =
+      this.selectedIndex !== null &&
+      this.mode !== "returning" &&
+      (motionFocus > 0.72 || this.isInspectingSwitch);
     this.shelfFurniture.visible = !isolated;
     const focusX = window.innerWidth < 760 ? 0 : desktopFocusX;
     const focusZ =
@@ -1067,6 +1187,13 @@ export class ShelfEngine {
       );
     }
 
+    this.currentScrollProgress = damp(
+      this.currentScrollProgress,
+      this.mode === "inspect" ? this.detailScrollProgress : 0,
+      7,
+      delta,
+    );
+
     this.runtimeBooks.forEach((book) => {
       book.hover = damp(book.hover, book.targetHover, 12, delta);
 
@@ -1079,13 +1206,18 @@ export class ShelfEngine {
       book.idleAmount = damp(book.idleAmount, idleTarget, 5, delta);
       const idleStrength = isSelected ? book.idleAmount : 0;
       const idlePhase = elapsed * 0.78 + book.index * 0.37;
+
+      const scrollYaw = isSelected ? this.currentScrollProgress * Math.PI * 0.45 : 0;
+      const scrollPitch = isSelected ? -this.currentScrollProgress * 0.14 : 0;
+
       book.inspectionIdle.position.y =
         Math.sin(idlePhase) * inspectionIdleLift * idleStrength;
       book.inspectionIdle.rotation.set(
         Math.sin(idlePhase * 0.73 + 0.8) *
           inspectionIdlePitch *
-          idleStrength,
-        Math.sin(idlePhase * 0.61) * inspectionIdleYaw * idleStrength,
+          idleStrength +
+          scrollPitch,
+        Math.sin(idlePhase * 0.61) * inspectionIdleYaw * idleStrength + scrollYaw,
         Math.sin(idlePhase * 0.89 + 1.7) *
           inspectionIdleRoll *
           idleStrength,
@@ -1117,9 +1249,10 @@ export class ShelfEngine {
     const worldPosition = new THREE.Vector3();
     selected.content.getWorldPosition(worldPosition);
     this.frameFocusedBook(worldPosition, easeOutCubic(this.focusProgress));
+    const camLambda = this.isInspectingSwitch ? 6.5 : (this.reducedMotion ? 28 : 13);
     this.camera.position.lerp(
       this.focusCameraPosition,
-      1 - Math.exp(-(this.reducedMotion ? 28 : 13) * delta),
+      1 - Math.exp(-camLambda * delta),
     );
     this.camera.lookAt(this.focusCameraTarget);
   }
@@ -1424,6 +1557,75 @@ export class ShelfEngine {
     }
   }
 
+  /**
+   * Instantly places the engine into inspection mode for the given book index,
+   * bypassing ALL browse-motion phases and focus-in animation.
+   *
+   * Used for deep-link boot: when the page loads at /book/[slug], the user
+   * should see the target book already in its focused/inspection pose on the
+   * very first rendered frame — no preloader, no shelf scroll, no extraction
+   * animation.
+   */
+  focusBookInstant(index: number) {
+    const next = clamp(Math.round(index), 0, this.runtimeBooks.length - 1);
+
+    // 1. Align all positional state to the target book
+    this.scrollIndex = next;
+    this.targetScrollIndex = next;
+    this.activeIndex = next;
+    this.presentedIndex = next;
+    this.pendingFocusIndex = null;
+    this.selectedIndex = next;
+    this.browseMotionPhase = "idle";
+    this.browseMotionProgress = 0;
+    this.motionBookIndex = null;
+
+    // 2. Position the shelf group so the target book is centered
+    this.shelfGroup.position.x = -this.xAtIndex(next);
+
+    // 3. Set mode and focus progress to fully-inspected state
+    this.focusProgress = 1;
+    this.mode = "inspect";
+    this.isInspectingSwitch = false;
+
+    // 4. Position the book in its focused pose
+    const isMobile = this.canvas.clientWidth < 760;
+    const focusX = isMobile ? 0 : desktopFocusX;
+    const focusZ = isMobile ? mobileFocusZ : desktopFocusZ;
+    const focusScale = isMobile ? mobileFocusScale : desktopFocusScale;
+    const selected = this.runtimeBooks[next];
+    this.commitBookPose(
+      selected,
+      focusedBookPose(1, this.motionLayout, focusX, focusZ, focusScale),
+    );
+
+    // 5. Hide all other books and shelf furniture (matches motionFocus > 0.72 branch)
+    this.runtimeBooks.forEach((book) => {
+      book.targetHover = 0;
+      book.hover = 0;
+    });
+    this.shelfFurniture.visible = false;
+
+    // 6. Position the camera at the focused-book view
+    const worldPosition = new THREE.Vector3();
+    selected.content.getWorldPosition(worldPosition);
+    this.frameFocusedBook(worldPosition, 1);
+    this.camera.position.copy(this.focusCameraPosition);
+    this.camera.lookAt(this.focusCameraTarget);
+
+    // 7. Enable orbit controls with the correct target
+    this.controls.enabled = true;
+    this.controls.target.copy(this.focusCameraTarget);
+    this.controls.update();
+
+    // 8. Fire callbacks so React state aligns
+    this.callbacks.onActiveIndex(next);
+    this.callbacks.onMode(this.mode, this.selectedIndex);
+    this.callbacks.onStatus(
+      `Inspecting ${this.runtimeBooks[next].data.shortTitle}`,
+    );
+  }
+
   returnToShelf() {
     if (this.mode === "browse" && this.pendingFocusIndex !== null) {
       this.pendingFocusIndex = null;
@@ -1431,14 +1633,22 @@ export class ShelfEngine {
       return;
     }
     if (this.mode === "browse" || this.mode === "returning") return;
+    this.detailScrollProgress = 0;
+    this.currentScrollProgress = 0;
     this.controls.enabled = false;
     this.mode = "returning";
+    // Clear all hover states so no book appears stuck highlighted after return
+    this.runtimeBooks.forEach((book) => {
+      book.targetHover = 0;
+      book.hover = 0;
+    });
     this.callbacks.onMode(this.mode, this.selectedIndex);
     this.callbacks.onStatus("Returning to the complete shelf");
   }
 
   resetFocusView() {
     if (this.mode !== "inspect" || this.selectedIndex === null) return;
+    this.detailScrollProgress = 0;
     const selected = this.runtimeBooks[this.selectedIndex];
     const worldPosition = new THREE.Vector3();
     selected.content.getWorldPosition(worldPosition);
@@ -1453,21 +1663,23 @@ export class ShelfEngine {
     const next = clamp(this.selectedIndex + direction, 0, this.runtimeBooks.length - 1);
     if (next === this.selectedIndex) return;
 
+    this.detailScrollProgress = 0;
+    this.currentScrollProgress = 0;
     this.callbacks.onStatus(`Preparing ${this.runtimeBooks[next].data.shortTitle}`);
     
-    // Smoothly return current book to shelf
-    this.commitBookPose(
-      this.runtimeBooks[this.selectedIndex],
-      presentedBookPose(this.motionLayout)
-    );
-    this.presentedIndex = this.selectedIndex;
+    // Shelve the current book fully (not just to presentedBookPose) because
+    // presentedIndex is immediately switching to `next` — leaving the old book
+    // in presentedBookPose with no owner would cause it to appear stuck on return.
+    const oldBook = this.runtimeBooks[this.selectedIndex];
+    this.commitBookPose(oldBook, shelvedBookPose(this.motionLayout), false);
+    oldBook.targetHover = 0;
+    oldBook.hover = 0;
 
     // Reset controls
     this.controls.enabled = false;
 
     // Setup new index selection targets
     this.targetScrollIndex = next;
-    this.scrollIndex = next;
     this.activeIndex = next;
     this.callbacks.onActiveIndex(next);
 
@@ -1475,6 +1687,7 @@ export class ShelfEngine {
     this.selectedIndex = next;
     this.presentedIndex = next;
     this.focusProgress = 0;
+    this.isInspectingSwitch = true;
     this.mode = "focusing";
     this.callbacks.onMode(this.mode, next);
   }

@@ -1,10 +1,7 @@
-import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Product from '@/lib/schemas/Product';
+import { successResponse, errorResponse, getSafeErrorMessage } from '@/lib/validations';
 import type { CollectionPreview } from '@/lib/types';
-
-// ─── Collection → MongoDB query mappings ────────────────────────────────────
-// These map the Shopify collection handles from index.json to MongoDB filters.
 
 const BOOK_COLLECTIONS = [
   { name: 'Non-Fiction',  handle: 'non-fiction',  href: '/shop?genre=non-fiction',  filter: { genre: { $regex: /non.fiction/i } } },
@@ -34,34 +31,26 @@ async function getCollectionCount(filter: Record<string, unknown>): Promise<numb
   }
 }
 
-export async function GET() {
+export async function GET(): Promise<Response> {
   try {
     await connectDB();
 
-    // Run all queries in parallel for performance
     const [
       filmProducts,
       bookCounts,
       bookmarkCounts,
       authorCounts,
     ] = await Promise.all([
-      // Featured: Appeared in Films — 4 products
       Product.find({ published: true, tags: { $in: ['film-appeared', 'film appeared'] } })
         .sort({ createdAt: -1 })
         .limit(4)
         .lean(),
 
-      // Book collection counts
       Promise.all(BOOK_COLLECTIONS.map((c) => getCollectionCount(c.filter))),
-
-      // Bookmark collection counts
       Promise.all(BOOKMARK_COLLECTIONS.map((c) => getCollectionCount(c.filter))),
-
-      // Author collection counts
       Promise.all(AUTHOR_COLLECTIONS.map((c) => getCollectionCount(c.filter))),
     ]);
 
-    // Build CollectionPreview arrays (image will be supplied when available)
     const bookCollections: CollectionPreview[] = BOOK_COLLECTIONS.map((c, i) => ({
       name: c.name,
       handle: c.handle,
@@ -83,23 +72,17 @@ export async function GET() {
       productCount: authorCounts[i],
     }));
 
-    return NextResponse.json({
-      filmProducts: filmProducts.map((p: unknown) => {
-        const prod = p as Record<string, unknown>;
-        return {
-          ...prod,
-          _id: String(prod._id),
-        };
-      }),
+    return successResponse({
+      filmProducts: filmProducts.map((p) => ({
+        ...p,
+        _id: String(p._id),
+      })),
       bookCollections,
       bookmarkCollections,
       authorCollections,
     });
   } catch (error) {
     console.error('[/api/homepage] error:', error);
-    return NextResponse.json(
-      { error: 'Failed to load homepage data' },
-      { status: 500 }
-    );
+    return errorResponse('Failed to load homepage data', 500);
   }
 }

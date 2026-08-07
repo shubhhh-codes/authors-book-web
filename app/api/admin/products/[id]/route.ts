@@ -1,59 +1,55 @@
-import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Product from '@/lib/schemas/Product';
+import { AdminProductUpdateSchema, parseRequestBody, errorResponse, successResponse, getSafeErrorMessage } from '@/lib/validations';
 
-// PUT update product by ID
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<Response> {
   try {
     await connectDB();
     const { id } = await params;
-    const body = await request.json();
+    const data = await parseRequestBody(request, AdminProductUpdateSchema);
 
-    if (body.tags && typeof body.tags === 'string') {
-      body.tags = body.tags.split(',').map((t: string) => t.trim());
-    }
-
-    if (body.images && Array.isArray(body.images)) {
-      body.images = body.images.map((url: string, pos: number) => ({
+    // Transform images array if provided as URL strings
+    const updateData: Record<string, unknown> = { ...data };
+    if (data.images && Array.isArray(data.images)) {
+      updateData.images = data.images.map((url: string, pos: number) => ({
         url,
-        alt: body.title || 'Product',
+        alt: data.title || 'Product',
         position: pos + 1,
       }));
     }
 
-    const updatedProduct = await Product.findByIdAndUpdate(id, body, { new: true });
+    const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true });
 
     if (!updatedProduct) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      return errorResponse('Product not found', 404);
     }
 
-    return NextResponse.json({ success: true, product: updatedProduct });
-  } catch (error: any) {
+    return successResponse({ success: true, product: updatedProduct });
+  } catch (error) {
     console.error('Admin PUT product error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return errorResponse(getSafeErrorMessage(error), 500);
   }
 }
 
-// DELETE product by ID
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<Response> {
   try {
     await connectDB();
     const { id } = await params;
     const deleted = await Product.findByIdAndDelete(id);
 
     if (!deleted) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      return errorResponse('Product not found', 404);
     }
 
-    return NextResponse.json({ success: true, message: 'Product deleted successfully' });
-  } catch (error: any) {
+    return successResponse({ success: true, message: 'Product deleted successfully' });
+  } catch (error) {
     console.error('Admin DELETE product error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return errorResponse(getSafeErrorMessage(error), 500);
   }
 }

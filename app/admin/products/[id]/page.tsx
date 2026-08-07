@@ -49,8 +49,8 @@ export default function EditProductPage() {
           imageUrl: data.images?.[0]?.url || '',
           published: data.published !== false,
         });
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Product not found');
       } finally {
         setLoading(false);
       }

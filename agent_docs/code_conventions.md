@@ -79,6 +79,49 @@ export default function CartDrawer() {
 
 ---
 
+## Validation & Error Handling
+
+**File:** [`lib/validations.ts`](../lib/validations.ts)
+
+All API routes use Zod schemas from `lib/validations.ts` for strict input validation and unified response helpers.
+
+**Main Schemas:**
+- `CheckoutRequestSchema`: `items` (array of `CheckoutItemSchema`), `subtotal`, `shippingCost`, `total`, `customerEmail`, `customerName`, `customerPhone`, `shippingAddress`
+- `CheckoutItemSchema`: `productId`, `handle`, `title`, `sku` (optional), `price` (positive), `quantity` (positive integer)
+- `ShippingAddressSchema`: `street` (min 5 chars), `city` (min 2 chars), `state` (min 2 chars), `zip` (regex: `/^\d{6}$/` for 6-digit Indian PIN)
+- `VerifyPaymentSchema`: `razorpayOrderId`, `razorpayPaymentId`, `razorpaySignature`, `orderId`
+
+**Utility Functions:**
+- `parseRequestBody(request, schema)`: Parses and validates JSON body, throws ZodError formatted message if invalid
+- `errorResponse(message, status)`: Returns `Response.json({ error: message }, { status })`
+- `successResponse(data, status)`: Returns `Response.json(data, { status })`
+
+**Standard API Route Pattern:**
+```ts
+import { parseRequestBody, errorResponse, successResponse } from '@/lib/validations';
+import { SomeSchema } from '@/lib/validations';
+
+export async function POST(request: Request) {
+  try {
+    const payload = await parseRequestBody(request, SomeSchema);
+    // ... logic
+    return successResponse({ success: true, data });
+  } catch (error: any) {
+    console.error('Route error:', error);
+    return errorResponse(error.message, 500);
+  }
+}
+```
+
+**Validation Rules Enforced:**
+- **Price:** must be positive number (`> 0`)
+- **Quantity:** must be positive integer (`≥ 1`)
+- **ZIP code:** exactly 6 digits (Indian postal format `/^\d{6}$/`)
+- **Email:** standard email format
+- **Phone:** 10-digit Indian number (`/^\d{10}$/`)
+
+---
+
 ## Naming Conventions
 
 | Thing | Convention | Example |

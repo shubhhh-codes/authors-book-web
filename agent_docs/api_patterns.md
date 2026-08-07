@@ -47,9 +47,59 @@ Regex matching is used for `genre` and `tag` (hyphens converted to `[-\s]?` patt
 
 ---
 
+## Rate Limiting
+
+**File:** [`lib/rateLimit.ts`](../lib/rateLimit.ts)
+
+- `checkRateLimit(identifier, limit, windowMs)`: Checks if request identifier (IP) exceeds rate limit. Returns `{ allowed: boolean, remaining: number }`.
+- `getClientIp(request)`: Helper function to extract client IP checking `x-forwarded-for`, `x-real-ip`, and localhost fallbacks.
+
+**Current applied limits:**
+- `POST /api/checkout`: 5 requests per IP per minute
+- `POST /api/verify-payment`: 10 requests per IP per minute
+
+**Storage:** In-memory `Map` store (resets on server restart). Requires Redis for production distributed rate limiting.
+
+**Timing:** Rate limiting check happens **BEFORE** database connection (step 0 in checkout flow).
+
+**Example Usage in API Route:**
+```ts
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+
+export async function POST(request: Request) {
+  const clientIp = getClientIp(request);
+  const { allowed } = checkRateLimit(clientIp, 5, 60 * 1000);
+  if (!allowed) {
+    return Response.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
+
+  // Proceed with route logic
+}
+```
+
+---
+
 ## Payment Flow
 
-### Step 1 — Create Order
+### Step 0 — Rate Limiting
+- Check request rate limit using `checkRateLimit(clientIp, 5, 60*1000)`
+- Return 429 if exceeded
+- This happens before any database operations
+
+### Complete Checkout Flow (Steps 1–8)
+1. **Validate request** with `CheckoutRequestSchema` (Zod)
+2. **Verify products exist** in DB (by `_id`)
+3. **Verify prices haven't changed** (tolerance: ±₹1)
+4. **Check inventory** before order creation
+5. **Generate unique booking ID**: `AB-{8digits}-{4hex}` (`Date.now().toString().slice(-8)` + `crypto.randomBytes(4).toString('hex')`)
+6. **Create order in MongoDB** with status: `'pending'` BEFORE Razorpay
+7. **Create Razorpay order** with `razorpay.orders.create()`
+8. **Update order** with `razorpayOrderId` and save
+
+- **Error handling:** If checkout fails after order creation, delete the order via `findByIdAndDelete()` to prevent orphans
+- **Error messages:** Sanitize sensitive errors before returning to client
+
+### Step 1 — Create Order API Call
 
 **File:** [`app/api/checkout/route.ts`](../app/api/checkout/route.ts)  
 **Method:** `POST /api/checkout`
@@ -72,7 +122,7 @@ Response:
 ```json
 {
   "orderId": "<mongo _id>",
-  "bookingId": "AB-87654321",
+  "bookingId": "AB-87654321-a1b2c3d4",
   "razorpayOrderId": "order_xxxx",
   "razorpayKey": "rzp_test_xxx",
   "amount": 49900

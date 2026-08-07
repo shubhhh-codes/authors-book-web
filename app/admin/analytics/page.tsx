@@ -1,16 +1,17 @@
 import { connectDB } from '@/lib/db';
 import Order from '@/lib/schemas/Order';
 import Product from '@/lib/schemas/Product';
+import type { Order as OrderType } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 async function getAnalyticsData() {
   try {
     await connectDB();
-    const orders = await Order.find({}).lean();
+    const orders = await Order.find({}).lean<OrderType[]>();
     const productsCount = await Product.countDocuments({ published: true });
 
-    const totalSales = orders.reduce((sum: number, o: any) => sum + (o.total || 0), 0);
+    const totalSales = orders.reduce((sum, o) => sum + (o.total || 0), 0);
     const totalOrders = orders.length;
     const avgOrderValue = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
 

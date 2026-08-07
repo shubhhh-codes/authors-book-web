@@ -9,7 +9,6 @@ interface CollectionListProps {
   columns?: 3 | 4 | 5 | 6;
 }
 
-// Grid column class map (Tailwind v4 safe-list via explicit class names)
 const GRID_COL_MAP: Record<number, string> = {
   3: 'sm:grid-cols-3',
   4: 'sm:grid-cols-2 lg:grid-cols-4',
@@ -17,7 +16,6 @@ const GRID_COL_MAP: Record<number, string> = {
   6: 'sm:grid-cols-3 lg:grid-cols-6',
 };
 
-// Muted-colour placeholders for collections that have no image
 const COLLECTION_COLORS = [
   '#1a1a2e', '#16213e', '#0f3460', '#533483',
   '#2d6a4f', '#1b4332', '#6b4226', '#3d2b1f',

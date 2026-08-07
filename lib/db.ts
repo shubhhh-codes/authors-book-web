@@ -1,15 +1,4 @@
 import mongoose from 'mongoose';
-import dns from 'dns';
-
-// Ensure IPv4 first resolution in Node.js DNS
-try {
-  dns.setDefaultResultOrder?.('ipv4first');
-} catch {}
-
-// Fallback to Google & Cloudflare DNS if system DNS fails SRV lookups
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
-} catch {}
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -17,34 +6,44 @@ if (!MONGODB_URI) {
   throw new Error('Please define MONGODB_URI in .env.local');
 }
 
-declare global {
-  var mongoose: { conn: any; promise: any } | undefined;
+interface MongooseCache {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
 }
 
-let cached = global.mongoose || { conn: null, promise: null };
+declare global {
+  var mongoose: MongooseCache | undefined;
+}
 
-export async function connectDB() {
-  if (!MONGODB_URI) {
-    throw new Error('Please define MONGODB_URI in .env.local');
-  }
+const cached: MongooseCache = global.mongoose || { conn: null, promise: null };
+if (!global.mongoose) {
+  global.mongoose = cached;
+}
 
+export async function connectDB(): Promise<typeof mongoose> {
   if (cached.conn) {
     return cached.conn;
   }
 
   if (!cached.promise) {
-    const opts = {
+    const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 10000,
+      maxPoolSize: 10,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose;
-    }).catch((err) => {
-      cached.promise = null; // Clear cached promise on failure so retries can occur
-      throw err;
-    });
+    cached.promise = mongoose
+      .connect(MONGODB_URI!, opts)
+      .then((mongooseInstance) => {
+        console.info('[MongoDB] Connection established successfully.');
+        return mongooseInstance;
+      })
+      .catch((err) => {
+        console.error('[MongoDB] Connection attempt failed:', err);
+        cached.promise = null; // Reset cached promise so subsequent attempts can retry
+        throw err;
+      });
   }
 
   cached.conn = await cached.promise;

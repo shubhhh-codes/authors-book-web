@@ -18,6 +18,9 @@ Set these in your hosting platform's environment config. Never commit them to gi
 | `RAZORPAY_KEY_SECRET` | ✅ | Live secret — also used as HMAC fallback |
 | `NEXTAUTH_SECRET` | ✅ | Random string (32+ chars) for admin session HMAC |
 | `ADMIN_PASSWORD` | ✅ | Admin panel password |
+| `WABA_PHONE_ID` | ✅ | WhatsApp Business Account Phone ID |
+| `WHATSAPP_ACCESS_TOKEN` | ✅ | Meta Cloud API access token |
+| `WHATSAPP_BUSINESS_PHONE` | ✅ | Business phone number (+91 prefix) |
 
 Generate `NEXTAUTH_SECRET`:
 ```bash
@@ -63,6 +66,25 @@ Or connect the GitHub repo in Vercel dashboard for auto-deploy on push.
 2. Set `RAZORPAY_KEY_ID=rzp_live_xxx` and `RAZORPAY_KEY_SECRET=xxx` in production env
 3. Verify your Razorpay account is fully activated (KYC complete)
 4. Test with a real ₹1 transaction before going live
+
+---
+
+## WhatsApp Production Setup
+
+- WhatsApp integration requires Meta Business Account setup
+- **Steps:**
+  1. Create Meta Business Account at `business.facebook.com`
+  2. Set up WhatsApp Business Account (WABA)
+  3. Create message templates in WhatsApp Manager (`order_confirmation_with_cta`, `shipping_update`)
+  4. Get `WABA_PHONE_ID` from WABA settings
+  5. Get access token from Meta App → Settings → API Keys
+  6. Set env vars in hosting platform:
+     - `WABA_PHONE_ID`
+     - `WHATSAPP_ACCESS_TOKEN`
+     - `WHATSAPP_BUSINESS_PHONE` (phone with +91 prefix)
+- **Integration point:** Automatically called from `POST /api/verify-payment` on payment success
+- **Behavior if credentials missing:** Notification silently fails (no crash), logged as warning
+- **Template parameters:** Customer name, order ID, amount, tracking URL
 
 ---
 

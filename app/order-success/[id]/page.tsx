@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import type { Order, OrderItem } from '@/lib/types';
 
 export default function OrderSuccessPage() {
   const params = useParams();
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,6 +29,8 @@ export default function OrderSuccessPage() {
 
     if (params.id) fetchOrder();
   }, [params.id]);
+
+  const bookingIdOrId = order?.bookingId || (typeof params.id === 'string' ? params.id : '');
 
   return (
     <>
@@ -55,7 +57,7 @@ export default function OrderSuccessPage() {
                   Thank you for your order!
                 </h1>
                 <p className="text-sm text-gray-600 mt-2">
-                  Order Reference: <strong className="text-gray-900">{order?.bookingId || params.id}</strong>
+                  Order Reference: <strong className="text-gray-900">{bookingIdOrId}</strong>
                 </p>
               </div>
 
@@ -84,29 +86,22 @@ export default function OrderSuccessPage() {
                   </h2>
 
                   <div className="divide-y divide-gray-100">
-                    {order.items?.map((item: any, idx: number) => {
-                      const img = item.images?.[0]?.url;
-                      return (
-                        <div key={idx} className="py-3 flex items-center gap-4 text-xs">
-                          <div className="relative w-12 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
-                            {img ? (
-                              <Image src={img} alt={item.title} fill className="object-cover" unoptimized />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">Book</div>
-                            )}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-gray-900 truncate">{item.title}</h3>
-                            <p className="text-gray-500">Qty: {item.quantity}</p>
-                          </div>
-
-                          <span className="font-bold text-gray-900">
-                            ₹{item.price * item.quantity}
-                          </span>
+                    {order.items?.map((item: OrderItem, idx: number) => (
+                      <div key={idx} className="py-3 flex items-center gap-4 text-xs">
+                        <div className="relative w-12 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
+                          <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">Book</div>
                         </div>
-                      );
-                    })}
+
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 truncate">{item.title}</h3>
+                          <p className="text-gray-500">Qty: {item.quantity}</p>
+                        </div>
+
+                        <span className="font-bold text-gray-900">
+                          ₹{item.price * item.quantity}
+                        </span>
+                      </div>
+                    ))}
                   </div>
 
                   <div className="pt-4 border-t border-gray-100 space-y-1.5 text-xs text-gray-600">

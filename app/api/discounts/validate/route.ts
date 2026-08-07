@@ -1,47 +1,41 @@
-import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Discount from '@/lib/schemas/Discount';
+import { DiscountValidateSchema, parseRequestBody, errorResponse, successResponse, getSafeErrorMessage } from '@/lib/validations';
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<Response> {
   try {
     await connectDB();
-    const { code, subtotal } = await request.json();
-
-    if (!code) {
-      return NextResponse.json({ error: 'Promo code is required.' }, { status: 400 });
-    }
+    const { code, subtotal } = await parseRequestBody(request, DiscountValidateSchema);
 
     const discount = await Discount.findOne({
-      code: String(code).toUpperCase().trim(),
+      code: code.toUpperCase().trim(),
       active: true,
-    });
+    }).lean();
 
     if (!discount) {
-      return NextResponse.json({ error: 'Invalid or expired promo code.' }, { status: 404 });
+      return errorResponse('Invalid or expired promo code.', 404);
     }
 
     if (subtotal < discount.minSubtotal) {
-      return NextResponse.json(
-        { error: `Minimum order value of ₹${discount.minSubtotal} required for code ${discount.code}.` },
-        { status: 400 }
+      return errorResponse(
+        `Minimum order value of ₹${discount.minSubtotal} required for code ${discount.code}.`,
+        400
       );
     }
 
-    let discountAmount = 0;
-    if (discount.discountType === 'percentage') {
-      discountAmount = Math.round((subtotal * discount.value) / 100);
-    } else {
-      discountAmount = discount.value;
-    }
+    const discountAmount = discount.discountType === 'percentage'
+      ? Math.round((subtotal * discount.value) / 100)
+      : discount.value;
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       code: discount.code,
       discountType: discount.discountType,
       value: discount.value,
       discountAmount,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error('Discount validation error:', error);
+    return errorResponse(getSafeErrorMessage(error), 500);
   }
 }

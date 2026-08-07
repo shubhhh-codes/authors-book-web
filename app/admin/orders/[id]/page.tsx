@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import type { Order, OrderItem } from '@/lib/types';
 
 export default function OrderDetailPage() {
   const params = useParams();
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
@@ -30,7 +31,7 @@ export default function OrderDetailPage() {
   const [trackingNumber, setTrackingNumber] = useState('');
   const [fulfilling, setFulfilling] = useState(false);
 
-  const handleUpdateStatus = async (newStatus: string) => {
+  const handleUpdateStatus = async (newStatus: 'pending' | 'paid' | 'shipped' | 'delivered' | 'failed') => {
     setUpdating(true);
     try {
       const res = await fetch(`/api/admin/orders/${params.id}`, {
@@ -38,7 +39,7 @@ export default function OrderDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (res.ok) {
+      if (res.ok && order) {
         setOrder({ ...order, status: newStatus });
       }
     } catch (err) {
@@ -139,7 +140,7 @@ export default function OrderDetailPage() {
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Items Ordered</h2>
 
             <div className="divide-y divide-gray-100">
-              {order.items?.map((item: any, idx: number) => (
+              {order.items?.map((item: OrderItem, idx: number) => (
                 <div key={idx} className="py-3 flex items-center justify-between text-xs">
                   <div>
                     <p className="font-bold text-gray-900">{item.title}</p>

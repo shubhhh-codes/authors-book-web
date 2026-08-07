@@ -11,7 +11,10 @@ All models live in `lib/schemas/`. Connection managed by `lib/db.ts`.
 
 ```ts
 {
-  bookingId: String,        // "AB-45678901" — human-readable reference
+  bookingId: String,        // "AB-{8digits}-{4hex}" — timestamp + crypto random bytes for collision prevention
+                            // Example: "AB-45678901-a1b2c3d4"
+                            // Generated: const randomBytes = crypto.randomBytes(4).toString('hex');
+                            //             const bookingId = `AB-${Date.now().toString().slice(-8)}-${randomBytes}`;
   customerEmail: String,
   customerName: String,
   customerPhone: String,

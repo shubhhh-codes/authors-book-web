@@ -1,14 +1,15 @@
 import Link from 'next/link';
 import { connectDB } from '@/lib/db';
 import Order from '@/lib/schemas/Order';
+import type { Order as OrderType } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-async function getAdminOrders() {
+async function getAdminOrders(): Promise<OrderType[]> {
   try {
     await connectDB();
-    const docs = await Order.find({}).sort({ 'timestamps.created': -1 }).lean();
-    return docs.map((d: any) => ({ ...d, _id: String(d._id) }));
+    const docs = await Order.find({}).sort({ 'timestamps.created': -1 }).lean<OrderType[]>();
+    return docs.map((d) => ({ ...d, _id: String(d._id) }));
   } catch (err) {
     console.error('getAdminOrders error:', err);
     return [];
@@ -58,7 +59,7 @@ export default async function AdminOrdersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 font-medium">
-                {orders.map((order: any) => {
+                {orders.map((order) => {
                   const dateStr = order.timestamps?.created
                     ? new Date(order.timestamps.created).toLocaleDateString('en-IN', {
                         day: 'numeric',

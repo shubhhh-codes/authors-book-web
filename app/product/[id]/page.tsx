@@ -5,10 +5,11 @@ import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import CartDrawer from '@/components/CartDrawer';
 import { useParams } from 'next/navigation';
+import type { Product, CartItem, ProductImage } from '@/lib/types';
 
 export default function ProductPage() {
   const params = useParams();
-  const [product, setProduct] = useState<any>(null);
+  const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
 
@@ -25,7 +26,7 @@ export default function ProductPage() {
         console.error('Error fetching product:', err);
       }
     };
-    
+
     if (params.id) {
       fetchProduct();
     }
@@ -35,17 +36,17 @@ export default function ProductPage() {
 
   const handleAddToCart = () => {
     if (!product) return;
-    
+
     const saved = localStorage.getItem('ab_cart') || localStorage.getItem('cart') || '[]';
-    const cart = JSON.parse(saved);
-    const existingItem = cart.find((item: any) => item._id === product._id);
-    
+    const cart: CartItem[] = JSON.parse(saved);
+    const existingItem = cart.find((item: CartItem) => item._id === product._id);
+
     if (existingItem) {
       existingItem.quantity += quantity;
     } else {
       cart.push({ ...product, quantity });
     }
-    
+
     localStorage.setItem('ab_cart', JSON.stringify(cart));
     localStorage.setItem('cart', JSON.stringify(cart));
     window.dispatchEvent(new Event('cart-updated'));
@@ -85,11 +86,11 @@ export default function ProductPage() {
                 </div>
               )}
             </div>
-            
+
             {/* Image thumbnails */}
             {images.length > 1 && (
               <div className="flex gap-2">
-                {images.map((img: any, idx: number) => (
+                {images.map((img: ProductImage, idx: number) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
@@ -97,11 +98,9 @@ export default function ProductPage() {
                       selectedImage === idx ? 'border-black' : 'border-gray-300'
                     }`}
                   >
-
-
                     <Image
                       src={img.url}
-                      alt={img.alt}
+                      alt={img.alt || product.title}
                       fill
                       className="object-cover"
                       unoptimized
@@ -111,11 +110,11 @@ export default function ProductPage() {
               </div>
             )}
           </div>
-          
+
           {/* Details */}
           <div>
             <h1 className="text-4xl font-bold mb-4">{product.title}</h1>
-            
+
             <div className="flex items-center gap-4 mb-6">
               <span className="text-3xl font-bold text-gray-900">
                 ₹{product.price}
@@ -126,7 +125,7 @@ export default function ProductPage() {
                 </span>
               )}
             </div>
-            
+
             {/* Description */}
             {product.description && (
               <div
@@ -134,7 +133,7 @@ export default function ProductPage() {
                 dangerouslySetInnerHTML={{ __html: product.description }}
               />
             )}
-            
+
             {/* Quantity + Add to Cart */}
             <div className="flex gap-4 mb-8">
               <div className="flex items-center border border-gray-300 rounded">
@@ -157,7 +156,7 @@ export default function ProductPage() {
                   +
                 </button>
               </div>
-              
+
               <button
                 onClick={handleAddToCart}
                 className="flex-1 bg-black text-white py-3 rounded-lg hover:bg-gray-800 font-medium"
@@ -165,7 +164,7 @@ export default function ProductPage() {
                 Add to Cart
               </button>
             </div>
-            
+
             {/* Meta info */}
             {(product.sku || product.material || product.color) && (
               <div className="border-t pt-6 space-y-2 text-sm">

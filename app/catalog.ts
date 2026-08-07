@@ -396,3 +396,12 @@ export const catalog: CatalogBook[] = ([
 ] satisfies CatalogBook[]).sort(
   (left, right) => right.height - left.height,
 );
+
+export function findBookIndexBySlug(slug: string): number {
+  if (!slug) return -1;
+  const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
+  return catalog.findIndex(
+    (book) => book.id.toLowerCase() === cleanSlug
+  );
+}
+

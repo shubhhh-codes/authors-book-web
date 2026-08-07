@@ -2,20 +2,21 @@ import Link from 'next/link';
 import { connectDB } from '@/lib/db';
 import Product from '@/lib/schemas/Product';
 import Order from '@/lib/schemas/Order';
+import type { Order as OrderType } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 async function getDashboardData() {
   try {
     await connectDB();
-    const [totalProducts, totalOrders, recentOrders] = await Promise.all([
+    const [totalProducts, totalOrders, recentOrdersDocs] = await Promise.all([
       Product.countDocuments({ published: true }),
       Order.countDocuments({}),
-      Order.find({}).sort({ 'timestamps.created': -1 }).limit(5).lean(),
+      Order.find({}).sort({ 'timestamps.created': -1 }).limit(5).lean<OrderType[]>(),
     ]);
 
-    const orders = await Order.find({}).lean();
-    const totalSales = orders.reduce((sum: number, o: any) => sum + (o.total || 0), 0);
+    const orders = await Order.find({}).lean<OrderType[]>();
+    const totalSales = orders.reduce((sum, o) => sum + (o.total || 0), 0);
     const avgOrderValue = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
 
     return {
@@ -23,7 +24,7 @@ async function getDashboardData() {
       totalOrders,
       totalSales,
       avgOrderValue,
-      recentOrders: recentOrders.map((o: any) => ({
+      recentOrders: recentOrdersDocs.map((o) => ({
         ...o,
         _id: String(o._id),
       })),
@@ -70,7 +71,7 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      {/* Metrics Cards (Shopify Polaris Style) */}
+      {/* Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-2xs">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Sales</p>
@@ -99,7 +100,7 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      {/* Main Grid: Recent Orders + Quick Setup Checklist */}
+      {/* Main Grid: Recent Orders + Quick Setup */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Orders Table */}
         <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl shadow-2xs overflow-hidden">
@@ -126,7 +127,7 @@ export default async function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium">
-                  {data.recentOrders.map((order: any) => (
+                  {data.recentOrders.map((order) => (
                     <tr key={order._id} className="hover:bg-gray-50/80 transition-colors">
                       <td className="py-3 px-4">
                         <Link href={`/admin/orders/${order._id}`} className="font-bold text-blue-600 hover:underline">
