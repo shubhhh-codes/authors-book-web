@@ -121,6 +121,18 @@ export default function ProductPage() {
   const currentQuantity = product.inventory?.quantity ?? 10;
   const isLowStock = currentQuantity > 0 && currentQuantity <= 5;
 
+  const nextImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (images.length === 0) return;
+    setSelectedImage((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (images.length === 0) return;
+    setSelectedImage((prev) => (prev - 1 + images.length) % images.length);
+  };
+
   return (
     <div className="min-h-screen bg-[#f4f0ea] text-[#1a1714] selection:bg-[#1a1714] selection:text-[#f4f0ea] flex flex-col">
       <Navigation showAnnouncement={false} />
@@ -147,6 +159,27 @@ export default function ProductPage() {
                   <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold uppercase tracking-widest bg-black/40">
                     Click to Zoom Cover 🔍
                   </div>
+
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={prevImage}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/80 hover:bg-white text-black shadow-md flex items-center justify-center text-sm font-bold transition-all hover:scale-110 active:scale-95"
+                        aria-label="Previous photo"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={nextImage}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/80 hover:bg-white text-black shadow-md flex items-center justify-center text-sm font-bold transition-all hover:scale-110 active:scale-95"
+                        aria-label="Next photo"
+                      >
+                        ›
+                      </button>
+                    </>
+                  )}
                 </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center font-serif italic text-sm text-[#8c8275]">
@@ -198,16 +231,67 @@ export default function ProductPage() {
             {/* Author / Vendor Name */}
             {product.vendor && (
               <p className="font-serif italic text-lg sm:text-xl text-[#5a5248]">
-                {product.vendor}
+                by {product.vendor}
               </p>
             )}
 
-            {/* Description Paragraph */}
+            {/* Price Tag */}
+            <div className="flex items-baseline gap-3 pt-2">
+              <span className="text-2xl sm:text-3xl font-bold text-[#1a1714]">
+                ₹{product.price}
+              </span>
+              {product.compareAtPrice && product.compareAtPrice > product.price && (
+                <span className="text-base text-[#8c8275] line-through">
+                  ₹{product.compareAtPrice}
+                </span>
+              )}
+            </div>
+
+            {/* Product Description */}
             {product.description && (
-              <div className="font-serif text-sm sm:text-base text-[#2c2620] leading-relaxed pt-1">
-                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }} />
-              </div>
+              <div
+                className="prose prose-sm font-serif text-[#3e3830] leading-relaxed tracking-wide pt-4 border-t border-[#ded7cb]"
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(product.description),
+                }}
+              />
             )}
+
+            {/* Specs & Add to Cart Form */}
+            <div className="space-y-6 pt-6 border-t border-[#ded7cb]">
+              <div className="flex items-center gap-4">
+                <label htmlFor="quantity-selector" className="text-xs uppercase font-bold tracking-widest text-[#8c8275]">
+                  Quantity
+                </label>
+                <div className="flex items-center border border-[#1a1714] rounded overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="px-3 py-1.5 text-sm font-bold hover:bg-[#1a1714] hover:text-[#f4f0ea] transition-colors"
+                  >
+                    -
+                  </button>
+                  <span className="px-4 py-1.5 text-sm font-bold min-w-[32px] text-center">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="px-3 py-1.5 text-sm font-bold hover:bg-[#1a1714] hover:text-[#f4f0ea] transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                className="w-full sm:w-auto px-8 py-4 bg-[#1a1714] text-[#f4f0ea] font-bold text-xs uppercase tracking-[0.2em] rounded shadow-md hover:bg-[#3e3830] active:scale-[0.99] transition-all"
+              >
+                Add to Cart — ₹{product.price * quantity}
+              </button>
+            </div>
 
             {/* Editorial Pull Quote / Testimonial Block */}
             {!product.description?.includes('blockquote') && (
@@ -327,7 +411,7 @@ export default function ProductPage() {
           onClick={() => setIsZoomOpen(false)}
           className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 cursor-zoom-out animate-fadeIn"
         >
-          <div className="relative max-w-4xl max-h-[90vh] w-full h-full">
+          <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
             <Image
               src={images[selectedImage].url}
               alt={images[selectedImage].alt || product.title}
@@ -335,7 +419,33 @@ export default function ProductPage() {
               className="object-contain"
               unoptimized
             />
+
+            {images.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={prevImage}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-50 w-12 h-12 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-2xl font-bold backdrop-blur-md transition-all cursor-pointer"
+                  aria-label="Previous image"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={nextImage}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-50 w-12 h-12 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-2xl font-bold backdrop-blur-md transition-all cursor-pointer"
+                  aria-label="Next image"
+                >
+                  ›
+                </button>
+              </>
+            )}
           </div>
+
+          <div className="absolute top-6 left-6 text-white text-xs font-semibold uppercase tracking-widest bg-white/20 px-3.5 py-1.5 rounded-full backdrop-blur-md">
+            Photo {selectedImage + 1} of {images.length}
+          </div>
+
           <button
             type="button"
             onClick={() => setIsZoomOpen(false)}

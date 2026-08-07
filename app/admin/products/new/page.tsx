@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import ImageUploader from '@/components/ImageUploader';
+import MultiImageUploader from '@/components/MultiImageUploader';
 import RichTextEditor from '@/components/RichTextEditor';
 
 const PRICE_PRESETS = [199, 299, 399, 499, 699, 999];
@@ -35,7 +35,7 @@ export default function NewProductPage() {
     sku: `AB-BOOK-${Math.floor(100000 + Math.random() * 900000)}`,
     weight: '0.3',
     quantity: '10',
-    imageUrl: '',
+    images: [] as string[],
     published: true,
     material: 'Brass Foil',
     color: 'Gold Foil',
@@ -118,7 +118,7 @@ export default function NewProductPage() {
           quantity: Number(formData.quantity),
           weight: Number(formData.weight),
           tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()) : [],
-          images: formData.imageUrl ? [formData.imageUrl] : [],
+          images: formData.images,
         }),
       });
 
@@ -144,7 +144,7 @@ export default function NewProductPage() {
             sku: generateSingleSku('book'),
             weight: '0.3',
             quantity: '10',
-            imageUrl: '',
+            images: [] as string[],
             published: true,
             material: 'Brass Foil',
             color: 'Gold Foil',
@@ -393,9 +393,9 @@ export default function NewProductPage() {
           {/* Media */}
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-2xs space-y-4">
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Product Media &amp; Cover Art</h2>
-            <ImageUploader
-              value={formData.imageUrl}
-              onChange={(url) => setFormData({ ...formData, imageUrl: url })}
+            <MultiImageUploader
+              images={formData.images}
+              onChange={(imgs) => setFormData((prev) => ({ ...prev, images: imgs }))}
             />
           </div>
 
@@ -443,9 +443,9 @@ export default function NewProductPage() {
           <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-2xs space-y-3">
             <h2 className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Store Front Live Preview</h2>
             <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 flex items-center gap-3">
-              {formData.imageUrl ? (
+              {formData.images[0] ? (
                 <div className="w-14 h-20 relative rounded border border-black/10 overflow-hidden bg-white shrink-0">
-                  <Image src={formData.imageUrl} alt="Cover preview" fill className="object-cover" unoptimized={formData.imageUrl.startsWith('data:')} />
+                  <Image src={formData.images[0]} alt="Cover preview" fill className="object-cover" unoptimized={formData.images[0].startsWith('data:')} />
                 </div>
               ) : (
                 <div className="w-14 h-20 rounded border border-dashed border-gray-300 bg-white flex items-center justify-center text-[10px] text-gray-400 font-bold shrink-0">

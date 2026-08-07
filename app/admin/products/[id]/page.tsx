@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import ImageUploader from '@/components/ImageUploader';
+import MultiImageUploader from '@/components/MultiImageUploader';
 import RichTextEditor from '@/components/RichTextEditor';
 
 export default function EditProductPage() {
@@ -28,7 +28,7 @@ export default function EditProductPage() {
     tags: '',
     sku: '',
     quantity: '10',
-    imageUrl: '',
+    images: [] as string[],
     published: true,
     material: '',
     color: '',
@@ -50,6 +50,10 @@ export default function EditProductPage() {
         const res = await fetch(`/api/products/${params.id}`);
         if (!res.ok) throw new Error('Product not found');
         const data = await res.json();
+        const loadedImages = Array.isArray(data.images)
+          ? data.images.map((img: { url?: string } | string) => (typeof img === 'string' ? img : img.url || '')).filter(Boolean)
+          : [];
+
         setFormData({
           title: data.title || '',
           description: data.description || '',
@@ -62,7 +66,7 @@ export default function EditProductPage() {
           tags: Array.isArray(data.tags) ? data.tags.join(', ') : '',
           sku: data.sku || '',
           quantity: String(data.inventory?.quantity ?? 10),
-          imageUrl: data.images?.[0]?.url || '',
+          images: loadedImages,
           published: data.published !== false,
           material: data.material || '',
           color: data.color || '',
@@ -113,7 +117,7 @@ export default function EditProductPage() {
           compareAtPrice: formData.compareAtPrice ? Number(formData.compareAtPrice) : undefined,
           inventory: { quantity: Number(formData.quantity), policy: 'deny' },
           tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()) : [],
-          images: formData.imageUrl ? [formData.imageUrl] : [],
+          images: formData.images,
         }),
       });
 
@@ -278,10 +282,10 @@ export default function EditProductPage() {
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-2xs space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Product Cover Image</h2>
-            <ImageUploader
-              value={formData.imageUrl}
-              onChange={(url) => setFormData({ ...formData, imageUrl: url })}
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Product Cover & Gallery Photos</h2>
+            <MultiImageUploader
+              images={formData.images}
+              onChange={(imgs) => setFormData({ ...formData, images: imgs })}
             />
           </div>
 
