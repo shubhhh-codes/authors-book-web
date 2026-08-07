@@ -208,6 +208,8 @@ export function bookFootprintsOverlap(
   right: BookFootprint,
   margin = collisionMargin,
 ) {
+  if (left.id === right.id) return false;
+
   const leftAxes = axesFor(left);
   const rightAxes = axesFor(right);
   const axes = [
