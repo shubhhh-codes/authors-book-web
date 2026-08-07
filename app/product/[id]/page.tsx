@@ -9,6 +9,7 @@ import Navigation from '@/components/Navigation';
 import CartDrawer from '@/components/CartDrawer';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
+import { isValidCatalogProduct } from '@/lib/catalogUtils';
 import type { Product, CartItem, ProductImage } from '@/lib/types';
 
 export default function ProductPage() {
@@ -21,6 +22,8 @@ export default function ProductPage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50, isHovered: false });
+  const [addedToast, setAddedToast] = useState(false);
 
   // Fetch active product and full catalog for volume navigation and related products
   useEffect(() => {
@@ -38,11 +41,12 @@ export default function ProductPage() {
           }
         }
 
-        const listRes = await fetch('/api/products');
+        const listRes = await fetch('/api/products?limit=50');
         if (listRes.ok) {
           const listData = await listRes.json();
-          if (Array.isArray(listData)) {
-            setAllProducts(listData);
+          const items = Array.isArray(listData) ? listData : listData.products || listData.data || [];
+          if (Array.isArray(items)) {
+            setAllProducts(items);
           }
         }
       } catch (err) {
@@ -59,6 +63,8 @@ export default function ProductPage() {
 
   const handleAddToCart = () => {
     if (!product) return;
+    const currentStock = product.inventory?.quantity;
+    if (currentStock !== undefined && currentStock <= 0) return;
 
     const saved = localStorage.getItem('ab_cart') || localStorage.getItem('cart') || '[]';
     const cart: CartItem[] = JSON.parse(saved);
@@ -73,13 +79,43 @@ export default function ProductPage() {
     localStorage.setItem('ab_cart', JSON.stringify(cart));
     localStorage.setItem('cart', JSON.stringify(cart));
     window.dispatchEvent(new Event('cart-updated'));
-    setIsCartOpen(true);
+
+    // Show non-disruptive feedback button state + floating toast notification
+    setAddedToast(true);
+    setTimeout(() => setAddedToast(false), 4500);
   };
 
-  // Related products from same category/genre
-  const relatedProducts = allProducts
-    .filter((p) => String(p._id) !== String(product?._id))
-    .slice(0, 4);
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomPos({ x, y, isHovered: true });
+  };
+
+  const handleMouseLeave = () => {
+    setZoomPos((prev) => ({ ...prev, isHovered: false }));
+  };
+
+  // Filter products using quality guard
+  const validProducts = allProducts.filter(isValidCatalogProduct);
+
+  const categoryProducts = validProducts.filter(
+    (p) =>
+      String(p._id) !== String(product?._id) &&
+      p.category &&
+      product?.category &&
+      p.category.trim().toLowerCase() === product.category.trim().toLowerCase()
+  );
+
+  const fallbackProducts = validProducts.filter(
+    (p) => String(p._id) !== String(product?._id) && !categoryProducts.some((cp) => String(cp._id) === String(p._id))
+  );
+
+  // Prioritize in-stock items first
+  const sortedCategory = [...categoryProducts].sort((a, b) => ((b.inventory?.quantity ?? 1) > 0 ? 1 : 0) - ((a.inventory?.quantity ?? 1) > 0 ? 1 : 0));
+  const sortedFallback = [...fallbackProducts].sort((a, b) => ((b.inventory?.quantity ?? 1) > 0 ? 1 : 0) - ((a.inventory?.quantity ?? 1) > 0 ? 1 : 0));
+
+  const youMayLikeProducts = [...sortedCategory, ...sortedFallback].slice(0, 4);
 
   // Calculate estimated delivery date (3-5 business days from today)
   const today = new Date();
@@ -119,6 +155,7 @@ export default function ProductPage() {
 
   const images = product.images || [];
   const currentQuantity = product.inventory?.quantity ?? 10;
+  const isOutOfStock = currentQuantity <= 0;
   const isLowStock = currentQuantity > 0 && currentQuantity <= 5;
 
   const nextImage = (e?: React.MouseEvent) => {
@@ -140,25 +177,38 @@ export default function ProductPage() {
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8 md:py-12 space-y-16">
         {/* Editorial Layout: Image Cover (Left) + Editorial Detail Copy (Right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
-          {/* Left Column: Cover Display & Lightbox Zoom */}
+          {/* Left Column: Cover Display & Lens Magnifier */}
           <div className="lg:col-span-5 space-y-4">
             <div
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
               onClick={() => images[selectedImage] && setIsZoomOpen(true)}
               className="relative w-full aspect-[3/4] bg-[#e9e3da] rounded-lg overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.1)] border border-[#ded7cb] cursor-zoom-in group"
             >
               {images[selectedImage] ? (
                 <>
-                  <Image
-                    src={images[selectedImage].url}
-                    alt={images[selectedImage].alt || product.title}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    unoptimized
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold uppercase tracking-widest bg-black/40">
-                    Click to Zoom Cover 🔍
+                  <div
+                    className="relative w-full h-full transition-transform duration-200 ease-out"
+                    style={{
+                      transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                      transform: zoomPos.isHovered ? 'scale(1.85)' : 'scale(1)',
+                    }}
+                  >
+                    <Image
+                      src={images[selectedImage].url}
+                      alt={images[selectedImage].alt || product.title}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                      priority
+                    />
                   </div>
+
+                  {!zoomPos.isHovered && (
+                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold uppercase tracking-widest bg-black/40 pointer-events-none">
+                      Click for Fullscreen Zoom 🔍
+                    </div>
+                  )}
 
                   {images.length > 1 && (
                     <>
@@ -235,78 +285,20 @@ export default function ProductPage() {
               </p>
             )}
 
-            {/* Price Tag */}
-            <div className="flex items-baseline gap-3 pt-2">
-              <span className="text-2xl sm:text-3xl font-bold text-[#1a1714]">
-                ₹{product.price}
-              </span>
-              {product.compareAtPrice && product.compareAtPrice > product.price && (
-                <span className="text-base text-[#8c8275] line-through">
-                  ₹{product.compareAtPrice}
-                </span>
-              )}
-            </div>
-
             {/* Product Description */}
             {product.description && (
               <div
-                className="prose prose-sm font-serif text-[#3e3830] leading-relaxed tracking-wide pt-4 border-t border-[#ded7cb]"
+                className="prose prose-sm font-serif text-[#3e3830] leading-relaxed tracking-wide pt-2 border-t border-[#ded7cb]"
                 dangerouslySetInnerHTML={{
                   __html: DOMPurify.sanitize(product.description),
                 }}
               />
             )}
 
-            {/* Specs & Add to Cart Form */}
-            <div className="space-y-6 pt-6 border-t border-[#ded7cb]">
-              <div className="flex items-center gap-4">
-                <label htmlFor="quantity-selector" className="text-xs uppercase font-bold tracking-widest text-[#8c8275]">
-                  Quantity
-                </label>
-                <div className="flex items-center border border-[#1a1714] rounded overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="px-3 py-1.5 text-sm font-bold hover:bg-[#1a1714] hover:text-[#f4f0ea] transition-colors"
-                  >
-                    -
-                  </button>
-                  <span className="px-4 py-1.5 text-sm font-bold min-w-[32px] text-center">
-                    {quantity}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => q + 1)}
-                    className="px-3 py-1.5 text-sm font-bold hover:bg-[#1a1714] hover:text-[#f4f0ea] transition-colors"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
 
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                className="w-full sm:w-auto px-8 py-4 bg-[#1a1714] text-[#f4f0ea] font-bold text-xs uppercase tracking-[0.2em] rounded shadow-md hover:bg-[#3e3830] active:scale-[0.99] transition-all"
-              >
-                Add to Cart — ₹{product.price * quantity}
-              </button>
-            </div>
-
-            {/* Editorial Pull Quote / Testimonial Block */}
-            {!product.description?.includes('blockquote') && (
-              <div className="border-l-2 border-[#1a1714] pl-4 py-1 my-6 space-y-1">
-                <p className="font-serif italic text-base sm:text-lg text-[#1a1714] leading-snug">
-                  “{product.seoDescription || `${product.title} by ${product.vendor || 'Authors book & bookmarks'}. Order your copy.`}”
-                </p>
-                <p className="text-[10px] font-bold tracking-[0.2em] text-[#8c8275] uppercase">
-                  {product.genre ? `${product.genre} REVIEW` : 'EDITORIAL CHOICE'}
-                </p>
-              </div>
-            )}
 
             {/* Specifications Grid */}
-            <div className="border-t border-[#e0d9cf] pt-5 my-6 grid grid-cols-2 sm:grid-cols-3 gap-6 text-left">
+            <div className="border-t border-[#e0d9cf] pt-5 my-4 grid grid-cols-2 sm:grid-cols-3 gap-6 text-left">
               <div>
                 <dt className="text-[9px] sm:text-[10px] uppercase tracking-[0.25em] font-semibold text-[#8c8275] mb-1">
                   Format
@@ -344,21 +336,23 @@ export default function ProductPage() {
             <div className="border-t border-[#1a1714] pt-6 space-y-4">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                 {/* Quantity Box */}
-                <div className="flex items-center border border-[#1a1714] rounded-lg overflow-hidden bg-white/50 text-xs font-semibold">
+                <div className={`flex items-center border border-[#1a1714] rounded-lg overflow-hidden bg-white/50 text-xs font-semibold ${isOutOfStock ? 'opacity-40 pointer-events-none' : ''}`}>
                   <button
                     type="button"
+                    disabled={isOutOfStock}
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-3.5 py-2.5 hover:bg-[#e0d9cf] transition-colors"
+                    className="px-3.5 py-2.5 hover:bg-[#e0d9cf] transition-colors disabled:cursor-not-allowed"
                   >
                     −
                   </button>
                   <span className="px-4 py-2.5 font-mono text-center min-w-[2.5rem] text-[#1a1714]">
-                    {quantity}
+                    {isOutOfStock ? 0 : quantity}
                   </span>
                   <button
                     type="button"
+                    disabled={isOutOfStock || quantity >= currentQuantity}
                     onClick={() => setQuantity(quantity + 1)}
-                    className="px-3.5 py-2.5 hover:bg-[#e0d9cf] transition-colors"
+                    className="px-3.5 py-2.5 hover:bg-[#e0d9cf] transition-colors disabled:cursor-not-allowed"
                   >
                     +
                   </button>
@@ -367,37 +361,55 @@ export default function ProductPage() {
                 {/* Add to Cart CTA */}
                 <button
                   type="button"
+                  disabled={isOutOfStock}
                   onClick={handleAddToCart}
-                  className="flex-1 bg-[#1a1714] text-[#f4f0ea] hover:bg-[#2c2620] px-6 py-3 rounded-lg text-xs font-bold tracking-[0.2em] uppercase transition-all duration-200 shadow-sm flex items-center justify-between group active:scale-[0.99]"
+                  className={`flex-1 px-6 py-3.5 rounded-lg text-xs font-bold tracking-[0.2em] uppercase transition-all duration-200 shadow-sm flex items-center justify-between group active:scale-[0.99] ${
+                    isOutOfStock
+                      ? 'bg-[#d0c9bd] text-[#7a7267] cursor-not-allowed shadow-none'
+                      : addedToast
+                      ? 'bg-emerald-700 text-white shadow-emerald-700/20 ring-2 ring-emerald-500/30'
+                      : 'bg-[#1a1714] text-[#f4f0ea] hover:bg-[#2c2620]'
+                  }`}
                 >
-                  <span>Add to Cart — ₹{(product.price * quantity).toLocaleString('en-IN')}</span>
+                  <span>{isOutOfStock ? 'Sold Out — Out of Stock' : addedToast ? '✓ Added to Cart!' : `Add to Cart — ₹${(product.price * quantity).toLocaleString('en-IN')}`}</span>
                   <span className="text-sm transition-transform duration-200 group-hover:translate-x-1 group-hover:-translate-y-0.5" aria-hidden="true">
-                    ↗
+                    {isOutOfStock ? '✕' : addedToast ? '✓' : '↗'}
                   </span>
                 </button>
               </div>
 
               {/* Delivery Estimates */}
-              <div className="flex items-center justify-between text-[10px] text-[#8c8275] uppercase tracking-widest pt-2 border-t border-[#e0d9cf]/60">
-                <span>🚚 Est. Delivery: {formatDate(deliveryStart)} – {formatDate(deliveryEnd)}</span>
-                <span>Free Shipping Across India</span>
+              <div className="flex flex-wrap items-center justify-between text-[11px] text-[#8c8275] tracking-wider pt-2 border-t border-[#ded7cb]/60">
+                <span className="flex items-center gap-1.5">
+                  🚚 Est. Delivery: <strong className="text-[#1a1714] font-semibold">{formatDate(deliveryStart)} – {formatDate(deliveryEnd)}</strong>
+                </span>
+                <span className="uppercase font-semibold tracking-widest text-[#5a5248]">
+                  Free Shipping Across India
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Related Products Carousel / Grid */}
-        {relatedProducts.length > 0 && (
+        {/* Premium Recommendations Section */}
+        {youMayLikeProducts.length > 0 && (
           <section className="border-t border-[#e0d9cf] pt-12 mt-16 space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif text-2xl text-[#1a1714]">More Volumes from Authors Book</h2>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8c8275] mb-1">
+                  Editorial Selection
+                </p>
+                <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#1a1714] tracking-tight">
+                  Curated for Your Library
+                </h2>
+              </div>
               <Link href="/shop" className="text-xs font-bold uppercase tracking-widest text-[#1a1714] hover:opacity-60 transition-opacity">
-                View Full Catalog →
+                Explore Catalog →
               </Link>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {relatedProducts.map((relProduct) => (
+              {youMayLikeProducts.map((relProduct) => (
                 <ProductCard key={relProduct._id} product={relProduct} />
               ))}
             </div>
@@ -409,14 +421,15 @@ export default function ProductPage() {
       {isZoomOpen && images[selectedImage] && (
         <div
           onClick={() => setIsZoomOpen(false)}
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 cursor-zoom-out animate-fadeIn"
+          className="fixed inset-0 z-50 bg-[#1c1815]/92 backdrop-blur-md flex flex-col items-center justify-center p-6 cursor-zoom-out animate-fadeIn select-none"
         >
-          <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
+          {/* Main Zoomed Image Container */}
+          <div className="relative max-w-4xl max-h-[75vh] sm:max-h-[80vh] w-full h-full flex items-center justify-center">
             <Image
               src={images[selectedImage].url}
               alt={images[selectedImage].alt || product.title}
               fill
-              className="object-contain"
+              className="object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
               unoptimized
             />
 
@@ -425,7 +438,7 @@ export default function ProductPage() {
                 <button
                   type="button"
                   onClick={prevImage}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-50 w-12 h-12 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-2xl font-bold backdrop-blur-md transition-all cursor-pointer"
+                  className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-50 w-11 h-11 rounded-full bg-white/10 hover:bg-white/30 text-white border border-white/20 flex items-center justify-center text-2xl font-bold backdrop-blur-md transition-all active:scale-95 cursor-pointer"
                   aria-label="Previous image"
                 >
                   ‹
@@ -433,7 +446,7 @@ export default function ProductPage() {
                 <button
                   type="button"
                   onClick={nextImage}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-50 w-12 h-12 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-2xl font-bold backdrop-blur-md transition-all cursor-pointer"
+                  className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-50 w-11 h-11 rounded-full bg-white/10 hover:bg-white/30 text-white border border-white/20 flex items-center justify-center text-2xl font-bold backdrop-blur-md transition-all active:scale-95 cursor-pointer"
                   aria-label="Next image"
                 >
                   ›
@@ -442,17 +455,46 @@ export default function ProductPage() {
             )}
           </div>
 
-          <div className="absolute top-6 left-6 text-white text-xs font-semibold uppercase tracking-widest bg-white/20 px-3.5 py-1.5 rounded-full backdrop-blur-md">
-            Photo {selectedImage + 1} of {images.length}
+          {/* Top Bar: Counter & Close */}
+          <div className="absolute top-6 left-6 flex items-center gap-3">
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#e0d9cf] bg-white/10 border border-white/15 px-3 py-1.5 rounded-full backdrop-blur-md">
+              Photo {selectedImage + 1} of {images.length}
+            </span>
           </div>
 
           <button
             type="button"
             onClick={() => setIsZoomOpen(false)}
-            className="absolute top-6 right-6 text-white text-xs uppercase font-bold tracking-widest bg-white/20 px-4 py-2 rounded-full hover:bg-white/40 transition-colors"
+            className="absolute top-6 right-6 text-white text-xs uppercase font-bold tracking-[0.2em] bg-white/10 border border-white/15 px-4 py-2 rounded-full hover:bg-white/30 transition-all backdrop-blur-md cursor-pointer"
           >
             Close ✕
           </button>
+
+          {/* Bottom Bar: Thumbnail Strip & Book Title */}
+          <div className="absolute bottom-6 flex flex-col items-center gap-2 max-w-md w-full px-4">
+            {images.length > 1 && (
+              <div className="flex items-center gap-2 overflow-x-auto p-1.5 rounded-xl bg-black/40 border border-white/10 backdrop-blur-md">
+                {images.map((img: ProductImage, idx: number) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedImage(idx);
+                    }}
+                    className={`relative w-10 h-12 rounded overflow-hidden border transition-all ${
+                      selectedImage === idx ? 'border-white scale-110 shadow-md ring-1 ring-white/50' : 'border-transparent opacity-50 hover:opacity-100'
+                    }`}
+                  >
+                    <Image src={img.url} alt={img.alt || product.title} fill className="object-cover" unoptimized />
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="font-serif italic text-xs text-[#ded7cb]/90 tracking-wide text-center">
+              {product.title} {product.vendor ? `by ${product.vendor}` : ''}
+            </p>
+          </div>
         </div>
       )}
 
@@ -480,6 +522,45 @@ export default function ProductPage() {
           }),
         }}
       />
+
+      {/* Floating Non-Intrusive Added-to-Cart Toast */}
+      {addedToast && (
+        <div className="fixed bottom-6 right-6 z-50 animate-bounce-in max-w-sm w-full bg-[#1a1714] text-[#f4f0ea] rounded-xl shadow-2xl p-4 border border-white/15 flex items-center justify-between gap-3 backdrop-blur-md">
+          <div className="flex items-center gap-3 overflow-hidden">
+            {images[0] && (
+              <div className="relative w-10 h-12 rounded overflow-hidden bg-[#e9e3da] shrink-0 border border-white/10">
+                <Image src={images[0].url} alt={product.title} fill className="object-cover" unoptimized />
+              </div>
+            )}
+            <div className="overflow-hidden">
+              <div className="text-xs font-bold truncate flex items-center gap-1.5 text-emerald-400">
+                <span>✓</span> Added to Cart
+              </div>
+              <div className="text-[11px] text-[#ded7cb]/90 truncate">{product.title} (Qty: {quantity})</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setAddedToast(false);
+                setIsCartOpen(true);
+              }}
+              className="px-3 py-1.5 bg-white text-black font-bold text-[10px] uppercase tracking-wider rounded-md hover:bg-[#e0d9cf] transition-all cursor-pointer"
+            >
+              View Cart
+            </button>
+            <button
+              type="button"
+              onClick={() => setAddedToast(false)}
+              className="p-1 text-gray-400 hover:text-white text-xs transition-colors cursor-pointer"
+              aria-label="Close notification"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       <Footer />
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />

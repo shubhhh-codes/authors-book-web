@@ -12,7 +12,6 @@ const QUANTITY_PRESETS = [5, 10, 25, 50, 100];
 const LANGUAGE_PRESETS = ['English', 'Hindi', 'Bilingual', 'Urdu'];
 const AUDIENCE_PRESETS = ['Adults', 'All Ages', 'Young Adults', 'Poetry Lovers'];
 const MATERIAL_PRESETS = ['Brass Foil', 'Metal', 'Premium Card', 'Leatherette', 'Ribbon'];
-const COLOR_PRESETS = ['Gold Foil', 'Silver Foil', 'Matte Black', 'Royal Blue', 'Velvet Red'];
 const GENRE_PRESETS = ['Poetry', 'Literature', 'Arts & Music', 'Fiction', 'Non-Fiction', 'Self-Help'];
 
 export default function NewProductPage() {
@@ -78,10 +77,20 @@ export default function NewProductPage() {
   const generateSeoFromTitle = () => {
     if (!formData.title) return;
     const cleanDesc = formData.description.replace(/<[^>]*>?/gm, '').trim();
+
+    const isBookmark = formData.type === 'bookmark';
+    const itemType = isBookmark ? 'Bookmark' : 'Book';
+    const authorOrVendor = formData.vendor ? `by ${formData.vendor}` : 'from Authors Book';
+    const priceText = formData.price ? `at ₹${formData.price}` : '';
+
+    const seoTitle = `${formData.title} ${authorOrVendor} | ${isBookmark ? 'Handcrafted Bookmark' : 'Premium Edition'} | Authors Book`;
+    const fallbackMeta = `Buy ${formData.title} ${authorOrVendor} ${priceText}. Premium handcrafted ${itemType.toLowerCase()} edition available now at Authors Book with fast nationwide delivery across India.`;
+    const seoDescription = cleanDesc ? `${cleanDesc.slice(0, 140)}... Buy ${formData.title} ${priceText}.` : fallbackMeta;
+
     setFormData((prev) => ({
       ...prev,
-      seoTitle: `${formData.title} | Authors Book & Bookmarks`,
-      seoDescription: cleanDesc.slice(0, 155) || `Buy ${formData.title} by ${formData.vendor || 'Authors Book'}. Premium edition available now with fast nationwide delivery.`,
+      seoTitle,
+      seoDescription,
     }));
   };
 
@@ -526,8 +535,22 @@ export default function NewProductPage() {
               </div>
               <input
                 type="number"
+                min="0"
                 value={formData.quantity}
-                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e') e.preventDefault();
+                }}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setFormData({ ...formData, quantity: isNaN(val) ? '' : String(Math.max(0, val)) });
+                }}
+                onBlur={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (isNaN(val) || val < 0) {
+                    setFormData({ ...formData, quantity: '0' });
+                  }
+                }}
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 font-bold"
               />
             </div>
@@ -654,30 +677,6 @@ export default function NewProductPage() {
                     type="text"
                     value={formData.material}
                     onChange={(e) => setFormData({ ...formData, material: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1.5">Color / Finish</label>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {COLOR_PRESETS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setFormData((prev) => ({ ...prev, color: c }))}
-                        className={`px-2 py-0.5 rounded text-[11px] border ${
-                          formData.color === c ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold' : 'bg-gray-50 text-gray-600'
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                  <input
-                    type="text"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg border border-gray-300"
                   />
                 </div>

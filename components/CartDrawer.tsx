@@ -41,7 +41,11 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
   const updateQuantity = (id: string, newQty: number) => {
     if (newQty < 1) return;
-    const updated = cart.map((item) => (item._id === id ? { ...item, quantity: newQty } : item));
+    const targetItem = cart.find((item) => item._id === id);
+    const maxStock = targetItem?.inventory?.quantity ?? 99;
+    const cappedQty = Math.min(newQty, maxStock);
+
+    const updated = cart.map((item) => (item._id === id ? { ...item, quantity: cappedQty } : item));
     setCart(updated);
     localStorage.setItem('ab_cart', JSON.stringify(updated));
     localStorage.setItem('cart', JSON.stringify(updated));

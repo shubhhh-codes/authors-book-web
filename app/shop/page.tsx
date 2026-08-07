@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import ProductCard from '@/components/ProductCard';
+import { isValidCatalogProduct } from '@/lib/catalogUtils';
 import type { Product } from '@/lib/types';
 
 function ShopContent() {
@@ -42,8 +43,10 @@ function ShopContent() {
       try {
         const res = await fetch(`/api/products?${params.toString()}`);
         const data = await res.json();
-        setProducts(data.products || []);
-        setTotal(data.pagination?.total || 0);
+        const rawItems: Product[] = data.products || [];
+        const validItems = rawItems.filter(isValidCatalogProduct);
+        setProducts(validItems);
+        setTotal(data.pagination?.total || validItems.length);
       } catch (err) {
         console.error('Error fetching filtered products:', err);
         setProducts([]);

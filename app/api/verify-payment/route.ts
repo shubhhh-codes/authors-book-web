@@ -63,7 +63,7 @@ export async function POST(request: Request): Promise<Response> {
     if (order.items && order.items.length > 0) {
       const bulkOps = order.items.map((item: any) => ({
         updateOne: {
-          filter: { _id: item.productId },
+          filter: { _id: item.productId, 'inventory.quantity': { $gte: item.quantity } },
           update: { $inc: { 'inventory.quantity': -item.quantity } }
         }
       }));

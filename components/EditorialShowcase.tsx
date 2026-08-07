@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { isValidCatalogProduct } from '@/lib/catalogUtils';
 import type { Product, CartItem } from '@/lib/types';
 
 interface EditorialShowcaseProps {
@@ -54,7 +55,8 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
         const res = await fetch('/api/products?limit=50');
         if (res.ok) {
           const data = await res.json();
-          setProducts(data.products || []);
+          const rawItems: Product[] = data.products || [];
+          setProducts(rawItems.filter(isValidCatalogProduct));
         }
       } catch (err) {
         console.error('Failed to fetch products for EditorialShowcase:', err);
@@ -107,12 +109,20 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
     e.preventDefault();
     e.stopPropagation();
 
+    // Prevent adding out of stock products
+    if (product.inventory?.quantity !== undefined && product.inventory.quantity <= 0) {
+      return;
+    }
+
     try {
       const saved = localStorage.getItem('ab_cart') || localStorage.getItem('cart') || '[]';
       const cart: CartItem[] = JSON.parse(saved);
       const existing = cart.find((item) => item._id === product._id);
 
       if (existing) {
+        // Enforce inventory max limit
+        const maxStock = product.inventory?.quantity ?? 99;
+        if (existing.quantity >= maxStock) return;
         existing.quantity += 1;
       } else {
         cart.push({ ...product, quantity: 1 });
@@ -263,6 +273,8 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
                 ? Math.round(((product.compareAtPrice! - product.price) / product.compareAtPrice!) * 100)
                 : 0;
               const isJustAdded = addedId === product._id;
+              const isSoldOut =
+                product.inventory?.quantity !== undefined && product.inventory.quantity <= 0;
 
               return (
                 <div
@@ -290,19 +302,28 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
                       </div>
                     )}
 
-                    {hasDiscount && (
+                    {isSoldOut ? (
+                      <span className="absolute top-3 left-3 bg-gray-900/90 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full font-[family-name:var(--sans)] shadow-xs">
+                        Sold Out
+                      </span>
+                    ) : hasDiscount ? (
                       <span className="absolute top-3 left-3 bg-[var(--ink)] text-[var(--paper)] text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full font-[family-name:var(--sans)] shadow-xs">
                         -{discountPct}%
                       </span>
-                    )}
+                    ) : null}
 
                     {/* Quick Add Overlay Button on Hover */}
                     <button
                       type="button"
+                      disabled={isSoldOut}
                       onClick={(e) => handleQuickAdd(e, product)}
-                      className="absolute bottom-3 inset-x-3 bg-[var(--ink)] text-[var(--paper)] text-[11px] font-semibold uppercase tracking-wider py-2.5 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 font-[family-name:var(--sans)] shadow-sm hover:bg-[var(--accent)]"
+                      className={`absolute bottom-3 inset-x-3 text-[11px] font-semibold uppercase tracking-wider py-2.5 rounded-xl transition-all duration-200 transform font-[family-name:var(--sans)] shadow-sm ${
+                        isSoldOut
+                          ? 'bg-gray-300 text-gray-600 opacity-90 cursor-not-allowed translate-y-0'
+                          : 'bg-[var(--ink)] text-[var(--paper)] opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 hover:bg-[var(--accent)]'
+                      }`}
                     >
-                      {isJustAdded ? '✓ Added to Cart' : '+ Quick Add'}
+                      {isSoldOut ? 'Out of Stock' : isJustAdded ? '✓ Added to Cart' : '+ Quick Add'}
                     </button>
                   </Link>
 
@@ -333,14 +354,16 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
                         )}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={(e) => handleQuickAdd(e, product)}
-                        className="text-[11px] font-semibold text-[var(--ink-soft)] hover:text-[var(--ink)] font-[family-name:var(--sans)] sm:hidden"
-                        aria-label={`Add ${product.title} to cart`}
-                      >
-                        + Add
-                      </button>
+                      {!isSoldOut && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleQuickAdd(e, product)}
+                          className="text-[11px] font-semibold text-[var(--ink-soft)] hover:text-[var(--ink)] font-[family-name:var(--sans)] sm:hidden"
+                          aria-label={`Add ${product.title} to cart`}
+                        >
+                          + Add
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

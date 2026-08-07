@@ -102,6 +102,26 @@ export default function EditProductPage() {
     setFormData({ ...formData, tags: nextTags.join(', ') });
   };
 
+  const generateSeoFromTitle = () => {
+    if (!formData.title) return;
+    const cleanDesc = formData.description.replace(/<[^>]*>?/gm, '').trim();
+
+    const isBookmark = formData.type === 'bookmark';
+    const itemType = isBookmark ? 'Bookmark' : 'Book';
+    const authorOrVendor = formData.vendor ? `by ${formData.vendor}` : 'from Authors Book';
+    const priceText = formData.price ? `at ₹${formData.price}` : '';
+
+    const seoTitle = `${formData.title} ${authorOrVendor} | ${isBookmark ? 'Handcrafted Bookmark' : 'Premium Edition'} | Authors Book`;
+    const fallbackMeta = `Buy ${formData.title} ${authorOrVendor} ${priceText}. Premium handcrafted ${itemType.toLowerCase()} edition available now at Authors Book with fast nationwide delivery across India.`;
+    const seoDescription = cleanDesc ? `${cleanDesc.slice(0, 140)}... Buy ${formData.title} ${priceText}.` : fallbackMeta;
+
+    setFormData((prev) => ({
+      ...prev,
+      seoTitle,
+      seoDescription,
+    }));
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -115,7 +135,7 @@ export default function EditProductPage() {
           ...formData,
           price: Number(formData.price),
           compareAtPrice: formData.compareAtPrice ? Number(formData.compareAtPrice) : undefined,
-          inventory: { quantity: Number(formData.quantity), policy: 'deny' },
+          inventory: { quantity: Math.max(0, Number(formData.quantity) || 0), policy: 'deny' },
           tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()) : [],
           images: formData.images,
         }),
@@ -290,7 +310,17 @@ export default function EditProductPage() {
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-2xs space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Search Engine Optimization (SEO)</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Search Engine Optimization (SEO)</h2>
+              <button
+                type="button"
+                onClick={generateSeoFromTitle}
+                disabled={!formData.title}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-800 disabled:opacity-40"
+              >
+                ⚡ Auto-fill SEO metadata
+              </button>
+            </div>
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">SEO Title</label>
@@ -437,16 +467,6 @@ export default function EditProductPage() {
                     placeholder="e.g. Brass Foil, Metal, Premium Card"
                   />
                 </div>
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Color / Finish</label>
-                  <input
-                    type="text"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300"
-                    placeholder="e.g. Gold Foil, Matte Black"
-                  />
-                </div>
               </>
             ) : (
               <>
@@ -491,8 +511,22 @@ export default function EditProductPage() {
               <label className="block font-semibold text-gray-700 mb-1">Quantity in Stock</label>
               <input
                 type="number"
+                min="0"
                 value={formData.quantity}
-                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e') e.preventDefault();
+                }}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setFormData({ ...formData, quantity: isNaN(val) ? '' : String(Math.max(0, val)) });
+                }}
+                onBlur={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (isNaN(val) || val < 0) {
+                    setFormData({ ...formData, quantity: '0' });
+                  }
+                }}
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 font-bold"
               />
             </div>
