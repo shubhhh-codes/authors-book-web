@@ -216,6 +216,8 @@ export class ShelfEngine {
     this.detailScrollProgress = clamp(progress, 0, 1);
   }
 
+  private customTextureCache = new Map<string, THREE.Texture>();
+
   constructor(
     canvas: HTMLCanvasElement,
     books: CatalogBook[],
@@ -263,16 +265,54 @@ export class ShelfEngine {
 
     this.resizeObserver = new ResizeObserver(this.handleResize);
     this.setupScene();
+    void this.initBooks(canvas);
+  }
+
+  private async preloadCustomCovers() {
+    const customBooks = this.booksData.filter((b) => b.coverImage);
+    if (customBooks.length === 0) return;
+    const loader = new THREE.TextureLoader();
+    await Promise.allSettled(
+      customBooks.map(async (book) => {
+        if (!book.coverImage) return;
+        try {
+          const texture = await loader.loadAsync(book.coverImage);
+          if (this.isDisposed) {
+            texture.dispose();
+            return;
+          }
+          texture.name = `customCover:${book.id}`;
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.anisotropy = Math.min(
+            8,
+            this.renderer.capabilities.getMaxAnisotropy(),
+          );
+          this.renderer.initTexture?.(texture);
+          this.customTextureCache.set(book.id, texture);
+        } catch {
+          // Fall back to procedural motif
+        }
+      }),
+    );
+  }
+
+  private async initBooks(canvas: HTMLCanvasElement) {
+    await this.preloadCustomCovers();
     this.createBooks();
     this.bindEvents();
     this.resizeObserver.observe(canvas);
     this.handleResize();
+
+    if (siteConfig.enableOptionalStripeArchive) {
+      await this.loadStripeAssets();
+    }
+
+    this.renderer.compile?.(this.scene, this.camera);
+    this.renderer.render(this.scene, this.camera);
+    this.animate();
+
     this.callbacks.onReady();
     this.callbacks.onStatus(`${this.booksData.length} volumes ready`);
-    this.animate();
-    if (siteConfig.enableOptionalStripeArchive) {
-      void this.loadStripeAssets();
-    }
 
     (
       window as unknown as {
@@ -362,7 +402,7 @@ export class ShelfEngine {
       const runtime = this.createBook(book, index, cursor);
       this.runtimeBooks.push(runtime);
       this.shelfGroup.add(runtime.slot);
-      if (book.coverImage) {
+      if (book.coverImage && !this.customTextureCache.has(book.id)) {
         void this.loadCustomCover(runtime, book.coverImage);
       }
       cursor += book.thickness * 0.5 + gap;
@@ -514,11 +554,14 @@ export class ShelfEngine {
     headbandBottom.position.y = -book.height * 0.5 + 0.045;
     physical.add(headbandBottom);
 
-    const frontTexture = toTexture(createFrontCover(book), this.renderer);
+    const cachedCustomTexture = this.customTextureCache.get(book.id);
+    const frontTexture = cachedCustomTexture || toTexture(createFrontCover(book), this.renderer);
     const titleTexture = toTexture(createTitleDecal(book), this.renderer);
     const spineTexture = toTexture(createSpineCover(book), this.renderer, 4);
     const backTexture = toTexture(createBackCover(book), this.renderer);
-    const textures = [frontTexture, titleTexture, spineTexture, backTexture];
+    const textures = cachedCustomTexture
+      ? [cachedCustomTexture, titleTexture, spineTexture, backTexture]
+      : [frontTexture, titleTexture, spineTexture, backTexture];
 
     const frontSurface = new THREE.Mesh<
       THREE.PlaneGeometry,
@@ -1426,13 +1469,15 @@ export class ShelfEngine {
         this.renderer.capabilities.getMaxAnisotropy(),
       );
 
+      this.renderer.initTexture?.(texture);
+
       const material = runtime.frontSurface.material;
       const proceduralTexture = material.map;
       material.map = texture;
       material.needsUpdate = true;
       runtime.textures.push(texture);
 
-      if (proceduralTexture) {
+      if (proceduralTexture && proceduralTexture !== texture) {
         const index = runtime.textures.indexOf(proceduralTexture);
         if (index >= 0) runtime.textures.splice(index, 1);
         proceduralTexture.dispose();

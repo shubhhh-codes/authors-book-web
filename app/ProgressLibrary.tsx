@@ -38,26 +38,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
 
   const [booksData, setBooksData] = useState<CatalogBook[]>(catalog);
 
-  // Fetch dynamic shelf books from DB if available
-  useEffect(() => {
-    let active = true;
-    async function loadBooks() {
-      try {
-        const res = await fetch("/api/shelf-books");
-        if (!res.ok) return;
-        const data = await res.json();
-        if (active && Array.isArray(data) && data.length > 0) {
-          setBooksData(data);
-        }
-      } catch (err) {
-        console.error("Failed to load shelf books dynamically:", err);
-      }
-    }
-    void loadBooks();
-    return () => {
-      active = false;
-    };
-  }, []);
+
 
   // Deep-link boot: when initialSlug is present, pre-seed React state so the
   // very first paint renders in inspection mode
@@ -113,7 +94,23 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
       await document.fonts.ready;
       if (cancelled || !canvasRef.current) return;
 
-      engine = new ShelfEngine(canvasRef.current, booksData, {
+      let activeBooks = catalog;
+      try {
+        const res = await fetch("/api/shelf-books");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            activeBooks = data;
+            if (!cancelled) setBooksData(data);
+          }
+        }
+      } catch {
+        // Fall back to default catalog
+      }
+
+      if (cancelled || !canvasRef.current) return;
+
+      engine = new ShelfEngine(canvasRef.current, activeBooks, {
         onActiveIndex: setActiveIndex,
         onMode: (nextMode, index) => {
           setMode(nextMode);
@@ -122,8 +119,8 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
           onFocusChange?.(isFocusedNow);
 
           if (typeof window !== "undefined") {
-            if (isFocusedNow && index !== null && booksData[index]) {
-              const bookSlug = booksData[index].id;
+            if (isFocusedNow && index !== null && activeBooks[index]) {
+              const bookSlug = activeBooks[index].id;
               const targetPath = `/book/${bookSlug}`;
               if (window.location.pathname !== targetPath) {
                 window.history.pushState({ bookSlug }, "", targetPath);
@@ -137,10 +134,12 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
         },
         onStatus: setStatus,
         onReady: () => {
-          setReady(true);
-          if (typeof window !== "undefined") {
-            sessionStorage.setItem("shelf-ready", "1");
-          }
+          setTimeout(() => {
+            setReady(true);
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem("shelf-ready", "1");
+            }
+          }, 1200);
         },
       });
       engineRef.current = engine;
@@ -148,7 +147,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
       const targetSlug = initialSlug || getSlugFromLocation();
       if (targetSlug) {
         const cleanTarget = decodeURIComponent(targetSlug).toLowerCase().trim();
-        const initialIdx = booksData.findIndex((b) => b.id.toLowerCase() === cleanTarget);
+        const initialIdx = activeBooks.findIndex((b) => b.id.toLowerCase() === cleanTarget);
         if (initialIdx !== -1) {
           if (isDeepLink) {
             engine.focusBookInstant(initialIdx);
@@ -165,7 +164,7 @@ export function ProgressLibrary({ initialSlug, onFocusChange }: ProgressLibraryP
       engine?.dispose();
       engineRef.current = null;
     };
-  }, [initialSlug, booksData]);
+  }, [initialSlug]);
 
   // Sync 3D bookshelf state with browser Back/Forward navigation
   useEffect(() => {
