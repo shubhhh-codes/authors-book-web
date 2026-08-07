@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import DOMPurify from 'isomorphic-dompurify';
 import Navigation from '@/components/Navigation';
 import CartDrawer from '@/components/CartDrawer';
 import Footer from '@/components/Footer';
@@ -204,7 +205,7 @@ export default function ProductPage() {
             {/* Description Paragraph */}
             {product.description && (
               <div className="font-serif text-sm sm:text-base text-[#2c2620] leading-relaxed pt-1">
-                <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }} />
               </div>
             )}
 

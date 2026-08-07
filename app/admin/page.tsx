@@ -15,8 +15,10 @@ async function getDashboardData() {
       Order.find({}).sort({ 'timestamps.created': -1 }).limit(5).lean<OrderType[]>(),
     ]);
 
-    const orders = await Order.find({}).lean<OrderType[]>();
-    const totalSales = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const salesStats = await Order.aggregate([
+      { $group: { _id: null, totalSales: { $sum: '$total' } } }
+    ]);
+    const totalSales = salesStats[0]?.totalSales || 0;
     const avgOrderValue = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
 
     return {
