@@ -53,8 +53,13 @@ export async function POST(request: Request): Promise<Response> {
       return errorResponse('Some products in cart no longer exist', 400);
     }
 
+    const dbProductMap = new Map();
+    for (const p of dbProducts) {
+      dbProductMap.set(p._id.toString(), p);
+    }
+
     for (const item of items) {
-      const dbProduct = dbProducts.find(p => p._id.toString() === item.productId);
+      const dbProduct = dbProductMap.get(item.productId);
 
       if (!dbProduct) {
         return errorResponse(`Product ${item.title} not found`, 400);
