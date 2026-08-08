@@ -1,8 +1,11 @@
+import { memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/lib/types';
 
-export default function ProductCard({ product }: { product: Product }) {
+// ⚡ Bolt: Wrapped in React.memo to prevent unnecessary re-renders in large lists
+// This avoids re-rendering unaffected cards when cart state or parent filters update.
+const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
   const image = product.images?.[0];
   const isSoldOut =
     product.inventory?.quantity !== undefined && product.inventory.quantity <= 0;
@@ -79,4 +82,6 @@ export default function ProductCard({ product }: { product: Product }) {
       </div>
     </Link>
   );
-}
+});
+
+export default ProductCard;
