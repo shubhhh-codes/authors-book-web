@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import DOMPurify from 'isomorphic-dompurify';
 import Navigation from '@/components/Navigation';
 import CartDrawer from '@/components/CartDrawer';
 import { useParams } from 'next/navigation';
@@ -130,7 +131,7 @@ export default function ProductPage() {
             {product.description && (
               <div
                 className="prose prose-sm mb-8"
-                dangerouslySetInnerHTML={{ __html: product.description }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
               />
             )}
 
