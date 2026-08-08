@@ -50,7 +50,7 @@ export const browsePhaseDuration: Record<BrowseMotionPhase, number> = {
   "settle-next": 0.11,
 };
 
-function clamp01(value: number) {
+export function clamp01(value: number) {
   return Math.min(1, Math.max(0, value));
 }
 
