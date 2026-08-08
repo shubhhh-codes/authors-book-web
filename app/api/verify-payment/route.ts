@@ -60,12 +60,15 @@ export async function POST(request: Request): Promise<Response> {
       return errorResponse('Order ID mismatch', 400);
     }
 
-    for (const item of order.items) {
-      await Product.findByIdAndUpdate(
-        item.productId,
-        { $inc: { 'inventory.quantity': -item.quantity } },
-        { new: true }
-      );
+    const bulkOps = order.items.map((item: any) => ({
+      updateOne: {
+        filter: { _id: item.productId },
+        update: { $inc: { 'inventory.quantity': -item.quantity } }
+      }
+    }));
+
+    if (bulkOps.length > 0) {
+      await Product.bulkWrite(bulkOps);
     }
 
     order.status = 'paid';
