@@ -401,7 +401,7 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
           }}
           onMouseLeave={() => startToastTimer(5000)}
-          className="fixed bottom-6 right-6 z-50 bg-[#1a1714] text-[#f4f0ea] px-4 py-3.5 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-between gap-4 max-w-sm w-full animate-in fade-in slide-in-from-bottom-5 duration-300"
+          className="fixed bottom-4 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 bg-[#1a1714] text-[#f4f0ea] px-3.5 sm:px-4 py-3 sm:py-3.5 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-between gap-3 sm:gap-4 sm:max-w-sm w-auto sm:w-full animate-in fade-in slide-in-from-bottom-5 duration-300"
         >
           <div className="flex items-center gap-3 min-w-0">
             {addedToastData.product.images?.[0] && (

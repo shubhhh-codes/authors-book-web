@@ -539,7 +539,7 @@ export default function ProductPage() {
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
           }}
           onMouseLeave={() => startToastTimer(5000)}
-          className="fixed bottom-6 right-6 z-50 animate-bounce-in max-w-sm w-full bg-[#1a1714] text-[#f4f0ea] rounded-xl shadow-2xl p-4 border border-white/15 flex items-center justify-between gap-3 backdrop-blur-md"
+          className="fixed bottom-4 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 animate-bounce-in sm:max-w-sm w-auto sm:w-full bg-[#1a1714] text-[#f4f0ea] rounded-xl shadow-2xl p-3.5 sm:p-4 border border-white/15 flex items-center justify-between gap-3 backdrop-blur-md"
         >
           <div className="flex items-center gap-3 overflow-hidden">
             {images[0] && (
