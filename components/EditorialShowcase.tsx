@@ -16,6 +16,7 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
   const [activeTab, setActiveTab] = useState<'all' | 'books' | 'bookmarks'>('all');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [addedId, setAddedId] = useState<string | null>(null);
+  const [addedToastData, setAddedToastData] = useState<{ product: Product; quantity: number } | null>(null);
 
   const tabNavRef = useRef<HTMLDivElement>(null);
   const tabButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -105,6 +106,13 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
     });
   }, [products, activeTab, activeFilter]);
 
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startToastTimer = (duration = 7500) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setAddedToastData(null), duration);
+  };
+
   const handleQuickAdd = (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
     e.stopPropagation();
@@ -118,14 +126,17 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
       const saved = localStorage.getItem('ab_cart') || localStorage.getItem('cart') || '[]';
       const cart: CartItem[] = JSON.parse(saved);
       const existing = cart.find((item) => item._id === product._id);
+      let totalQty = 1;
 
       if (existing) {
         // Enforce inventory max limit
         const maxStock = product.inventory?.quantity ?? 99;
         if (existing.quantity >= maxStock) return;
         existing.quantity += 1;
+        totalQty = existing.quantity;
       } else {
         cart.push({ ...product, quantity: 1 });
+        totalQty = 1;
       }
 
       localStorage.setItem('ab_cart', JSON.stringify(cart));
@@ -133,11 +144,9 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
       window.dispatchEvent(new Event('cart-updated'));
 
       setAddedId(product._id);
-      setTimeout(() => setAddedId(null), 1500);
-
-      if (onOpenCart) {
-        onOpenCart();
-      }
+      setAddedToastData({ product, quantity: totalQty });
+      setTimeout(() => setAddedId(null), 2500);
+      startToastTimer(7500);
     } catch (err) {
       console.error('Quick add error:', err);
     }
@@ -383,6 +392,66 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
           </Link>
         </div>
       </div>
+
+      {/* Floating Toast Notification on Quick Add */}
+      {addedToastData && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onMouseEnter={() => {
+            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+          }}
+          onMouseLeave={() => startToastTimer(5000)}
+          className="fixed bottom-6 right-6 z-50 bg-[#1a1714] text-[#f4f0ea] px-4 py-3.5 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-between gap-4 max-w-sm w-full animate-in fade-in slide-in-from-bottom-5 duration-300"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            {addedToastData.product.images?.[0] && (
+              <div className="relative w-10 h-12 rounded-lg overflow-hidden bg-[#e9e3da] shrink-0 border border-white/10">
+                <Image
+                  src={addedToastData.product.images[0].url}
+                  alt={addedToastData.product.title}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+            )}
+            <div className="overflow-hidden">
+              <div className="text-xs font-bold truncate flex items-center gap-1.5 text-emerald-400">
+                <span>✓</span> Added to Cart
+              </div>
+              <div className="text-[11px] text-[#ded7cb]/90 truncate">
+                {addedToastData.product.title} (Qty: {addedToastData.quantity})
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+                setAddedToastData(null);
+                if (onOpenCart) onOpenCart();
+              }}
+              className="px-3.5 py-2 bg-white text-black font-bold text-[10px] uppercase tracking-wider rounded-lg hover:bg-gray-100 transition-all cursor-pointer shadow-xs"
+            >
+              VIEW CART
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+                setAddedToastData(null);
+              }}
+              className="p-1 text-gray-400 hover:text-white text-xs transition-colors cursor-pointer"
+              aria-label="Close notification"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

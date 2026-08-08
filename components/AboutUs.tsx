@@ -2,9 +2,10 @@ export default function AboutUs() {
   return (
     <section
       id="about"
-      className="w-full py-16 sm:py-24 bg-[var(--paper)] text-[var(--ink)]"
+      className="w-full py-16 sm:py-24 bg-[var(--paper)] text-[var(--ink)] relative"
       aria-labelledby="about-heading"
     >
+      <div className="w-full h-px bg-[var(--hairline)] absolute top-0 left-0" aria-hidden="true" />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center font-[family-name:var(--serif)]">
         <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--ink-soft)] mb-3 font-[family-name:var(--sans)]">
           Our Mission

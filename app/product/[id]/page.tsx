@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -24,24 +24,35 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50, isHovered: false });
   const [addedToast, setAddedToast] = useState(false);
+  const [addedToastQty, setAddedToastQty] = useState(1);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch active product and full catalog for volume navigation and related products
+  const startToastTimer = (duration = 7500) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setAddedToast(false), duration);
+  };
+
+  // Fetch active product and full catalog in parallel for fast loading
   useEffect(() => {
     const fetchProduct = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/products/${params.id}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data && !data.error) {
-          setProduct(data);
-          // SEO redirect: if accessed via raw MongoDB ObjectId, replace URL bar with human-readable handle
-          if (data.handle && params.id !== data.handle) {
-            router.replace(`/product/${data.handle}`);
+        const [productRes, listRes] = await Promise.all([
+          fetch(`/api/products/${params.id}`),
+          fetch('/api/products?limit=50'),
+        ]);
+
+        if (productRes.ok) {
+          const data = await productRes.json();
+          if (data && !data.error) {
+            setProduct(data);
+            // SEO redirect: if accessed via raw MongoDB ObjectId, replace URL bar with human-readable handle
+            if (data.handle && params.id !== data.handle) {
+              router.replace(`/product/${data.handle}`);
+            }
           }
         }
 
-        const listRes = await fetch('/api/products?limit=50');
         if (listRes.ok) {
           const listData = await listRes.json();
           const items = Array.isArray(listData) ? listData : listData.products || listData.data || [];
@@ -70,10 +81,13 @@ export default function ProductPage() {
     const cart: CartItem[] = JSON.parse(saved);
     const existingItem = cart.find((item: CartItem) => item._id === product._id);
 
+    let totalQty = quantity;
     if (existingItem) {
       existingItem.quantity += quantity;
+      totalQty = existingItem.quantity;
     } else {
       cart.push({ ...product, quantity });
+      totalQty = quantity;
     }
 
     localStorage.setItem('ab_cart', JSON.stringify(cart));
@@ -81,8 +95,9 @@ export default function ProductPage() {
     window.dispatchEvent(new Event('cart-updated'));
 
     // Show non-disruptive feedback button state + floating toast notification
+    setAddedToastQty(totalQty);
     setAddedToast(true);
-    setTimeout(() => setAddedToast(false), 4500);
+    startToastTimer(7500);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -174,7 +189,7 @@ export default function ProductPage() {
     <div className="min-h-screen bg-[#f4f0ea] text-[#1a1714] selection:bg-[#1a1714] selection:text-[#f4f0ea] flex flex-col">
       <Navigation showAnnouncement={false} />
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8 md:py-12 space-y-16">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 md:py-12 space-y-12 sm:space-y-16">
         {/* Editorial Layout: Image Cover (Left) + Editorial Detail Copy (Right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
           {/* Left Column: Cover Display & Lens Magnifier */}
@@ -298,7 +313,7 @@ export default function ProductPage() {
 
 
             {/* Specifications Grid */}
-            <div className="border-t border-[#e0d9cf] pt-5 my-4 grid grid-cols-2 sm:grid-cols-3 gap-6 text-left">
+            <div className="border-t border-[#e0d9cf] pt-5 my-4 grid grid-cols-2 gap-6 text-left">
               <div>
                 <dt className="text-[9px] sm:text-[10px] uppercase tracking-[0.25em] font-semibold text-[#8c8275] mb-1">
                   Format
@@ -309,22 +324,15 @@ export default function ProductPage() {
               </div>
 
               <div>
-                <dt className="text-[9px] sm:text-[10px] uppercase tracking-[0.25em] font-semibold text-[#8c8275] mb-1">
-                  Availability
-                </dt>
-                <dd className="font-serif text-xs sm:text-sm text-[#1a1714]">
-                  {currentQuantity > 0 ? `${currentQuantity} in stock` : 'Available now'}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-[9px] sm:text-[10px] uppercase tracking-[0.25em] font-semibold text-[#8c8275] mb-1">
+                <dt className="text-[9px] sm:text-[10px] uppercase tracking-[0.25em] font-semibold text-[#8c8275] mb-1.5">
                   Price
                 </dt>
-                <dd className="font-serif text-xs sm:text-sm font-bold text-[#1a1714]">
-                  ₹{product.price.toLocaleString('en-IN')}
+                <dd className="font-serif flex flex-wrap items-baseline gap-2.5">
+                  <span className="text-xl sm:text-2xl font-bold text-[#1a1714]">
+                    ₹{product.price.toLocaleString('en-IN')}
+                  </span>
                   {product.compareAtPrice && product.compareAtPrice > product.price && (
-                    <span className="text-xs text-[#9a9184] line-through font-normal ml-2">
+                    <span className="text-sm sm:text-base text-[#7c7365] line-through font-normal decoration-[#8c8275]/80">
                       ₹{product.compareAtPrice.toLocaleString('en-IN')}
                     </span>
                   )}
@@ -334,25 +342,25 @@ export default function ProductPage() {
 
             {/* Quantity Selector & Add to Cart Action Bar */}
             <div className="border-t border-[#1a1714] pt-6 space-y-4">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
                 {/* Quantity Box */}
-                <div className={`flex items-center border border-[#1a1714] rounded-lg overflow-hidden bg-white/50 text-xs font-semibold ${isOutOfStock ? 'opacity-40 pointer-events-none' : ''}`}>
+                <div className={`h-12 shrink-0 flex items-center border border-[#1a1714] rounded-lg overflow-hidden bg-white/50 text-xs font-semibold ${isOutOfStock ? 'opacity-40 pointer-events-none' : ''}`}>
                   <button
                     type="button"
                     disabled={isOutOfStock}
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-3.5 py-2.5 hover:bg-[#e0d9cf] transition-colors disabled:cursor-not-allowed"
+                    className="h-full px-3.5 flex items-center justify-center hover:bg-[#e0d9cf] transition-colors disabled:cursor-not-allowed cursor-pointer"
                   >
                     −
                   </button>
-                  <span className="px-4 py-2.5 font-mono text-center min-w-[2.5rem] text-[#1a1714]">
+                  <span className="h-full px-3 flex items-center justify-center font-mono text-center min-w-[2.2rem] text-[#1a1714]">
                     {isOutOfStock ? 0 : quantity}
                   </span>
                   <button
                     type="button"
                     disabled={isOutOfStock || quantity >= currentQuantity}
                     onClick={() => setQuantity(quantity + 1)}
-                    className="px-3.5 py-2.5 hover:bg-[#e0d9cf] transition-colors disabled:cursor-not-allowed"
+                    className="h-full px-3.5 flex items-center justify-center hover:bg-[#e0d9cf] transition-colors disabled:cursor-not-allowed cursor-pointer"
                   >
                     +
                   </button>
@@ -363,7 +371,7 @@ export default function ProductPage() {
                   type="button"
                   disabled={isOutOfStock}
                   onClick={handleAddToCart}
-                  className={`flex-1 px-6 py-3.5 rounded-lg text-xs font-bold tracking-[0.2em] uppercase transition-all duration-200 shadow-sm flex items-center justify-between group active:scale-[0.99] ${
+                  className={`h-12 flex-1 min-w-0 px-3 sm:px-6 rounded-lg text-[11px] sm:text-xs font-bold tracking-[0.1em] sm:tracking-[0.2em] uppercase transition-all duration-200 shadow-sm flex items-center justify-between group active:scale-[0.99] ${
                     isOutOfStock
                       ? 'bg-[#d0c9bd] text-[#7a7267] cursor-not-allowed shadow-none'
                       : addedToast
@@ -371,15 +379,15 @@ export default function ProductPage() {
                       : 'bg-[#1a1714] text-[#f4f0ea] hover:bg-[#2c2620]'
                   }`}
                 >
-                  <span>{isOutOfStock ? 'Sold Out — Out of Stock' : addedToast ? '✓ Added to Cart!' : `Add to Cart — ₹${(product.price * quantity).toLocaleString('en-IN')}`}</span>
-                  <span className="text-sm transition-transform duration-200 group-hover:translate-x-1 group-hover:-translate-y-0.5" aria-hidden="true">
+                  <span className="truncate min-w-0">{isOutOfStock ? 'Sold Out' : addedToast ? '✓ Added to Cart!' : `Add to Cart — ₹${(product.price * quantity).toLocaleString('en-IN')}`}</span>
+                  <span className="text-sm transition-transform duration-200 group-hover:translate-x-1 group-hover:-translate-y-0.5 shrink-0 ml-1.5" aria-hidden="true">
                     {isOutOfStock ? '✕' : addedToast ? '✓' : '↗'}
                   </span>
                 </button>
               </div>
 
               {/* Delivery Estimates */}
-              <div className="flex flex-wrap items-center justify-between text-[11px] text-[#8c8275] tracking-wider pt-2 border-t border-[#ded7cb]/60">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4 text-[11px] text-[#8c8275] tracking-wider pt-3 border-t border-[#ded7cb]/60">
                 <span className="flex items-center gap-1.5">
                   🚚 Est. Delivery: <strong className="text-[#1a1714] font-semibold">{formatDate(deliveryStart)} – {formatDate(deliveryEnd)}</strong>
                 </span>
@@ -525,7 +533,14 @@ export default function ProductPage() {
 
       {/* Floating Non-Intrusive Added-to-Cart Toast */}
       {addedToast && (
-        <div className="fixed bottom-6 right-6 z-50 animate-bounce-in max-w-sm w-full bg-[#1a1714] text-[#f4f0ea] rounded-xl shadow-2xl p-4 border border-white/15 flex items-center justify-between gap-3 backdrop-blur-md">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onMouseEnter={() => {
+            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+          }}
+          onMouseLeave={() => startToastTimer(5000)}
+          className="fixed bottom-6 right-6 z-50 animate-bounce-in max-w-sm w-full bg-[#1a1714] text-[#f4f0ea] rounded-xl shadow-2xl p-4 border border-white/15 flex items-center justify-between gap-3 backdrop-blur-md"
+        >
           <div className="flex items-center gap-3 overflow-hidden">
             {images[0] && (
               <div className="relative w-10 h-12 rounded overflow-hidden bg-[#e9e3da] shrink-0 border border-white/10">
@@ -536,13 +551,15 @@ export default function ProductPage() {
               <div className="text-xs font-bold truncate flex items-center gap-1.5 text-emerald-400">
                 <span>✓</span> Added to Cart
               </div>
-              <div className="text-[11px] text-[#ded7cb]/90 truncate">{product.title} (Qty: {quantity})</div>
+              <div className="text-[11px] text-[#ded7cb]/90 truncate">{product.title} (Qty: {addedToastQty})</div>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
+                if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
                 setAddedToast(false);
                 setIsCartOpen(true);
               }}
@@ -552,7 +569,11 @@ export default function ProductPage() {
             </button>
             <button
               type="button"
-              onClick={() => setAddedToast(false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+                setAddedToast(false);
+              }}
               className="p-1 text-gray-400 hover:text-white text-xs transition-colors cursor-pointer"
               aria-label="Close notification"
             >

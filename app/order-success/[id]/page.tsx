@@ -62,7 +62,7 @@ export default function OrderSuccessPage() {
               </div>
 
               <p className="text-xs text-gray-500 max-w-md mx-auto leading-relaxed">
-                We have received your order and are preparing your literary treasures for dispatch. A confirmation email has been sent to{' '}
+                We have received your order and are preparing your literary treasures for dispatch. A confirmation email will been sent to{' '}
                 <strong className="text-gray-800">{order?.customerEmail || 'your email'}</strong>.
               </p>
 
