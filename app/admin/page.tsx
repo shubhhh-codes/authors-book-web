@@ -15,8 +15,10 @@ async function getDashboardData() {
       Order.find({}).sort({ 'timestamps.created': -1 }).limit(5).lean<OrderType[]>(),
     ]);
 
-    const orders = await Order.find({}).lean<OrderType[]>();
-    const totalSales = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const salesStats = await Order.aggregate([
+      { $group: { _id: null, totalSales: { $sum: '$total' } } }
+    ]);
+    const totalSales = salesStats[0]?.totalSales || 0;
     const avgOrderValue = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
 
     return {
@@ -45,7 +47,7 @@ export default async function AdminDashboard() {
   const data = await getDashboardData();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-admin-fade">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -58,13 +60,13 @@ export default async function AdminDashboard() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/products/new"
-            className="bg-[#1a1a1a] text-white hover:bg-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
+            className="bg-[#1a1a1a] text-white hover:bg-black text-xs font-semibold px-4 py-2 rounded-lg transition-all active:scale-95 flex items-center gap-1.5 shadow-2xs hover:shadow-md"
           >
             <span>+ Add Product</span>
           </Link>
           <Link
             href="/admin/orders"
-            className="bg-white text-gray-800 border border-gray-300 hover:border-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="bg-white text-gray-800 border border-gray-300 hover:border-black text-xs font-semibold px-4 py-2 rounded-lg transition-all active:scale-95"
           >
             View Orders
           </Link>
@@ -73,7 +75,7 @@ export default async function AdminDashboard() {
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-2xs">
+        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-2xs admin-card-hover">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Sales</p>
           <p className="text-2xl font-bold text-gray-900 mt-2">₹{data.totalSales.toLocaleString('en-IN')}</p>
           <p className="text-[11px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
@@ -81,19 +83,19 @@ export default async function AdminDashboard() {
           </p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-2xs">
+        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-2xs admin-card-hover">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Orders</p>
           <p className="text-2xl font-bold text-gray-900 mt-2">{data.totalOrders}</p>
           <p className="text-[11px] text-gray-500 font-medium mt-1">Across all channels</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-2xs">
+        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-2xs admin-card-hover">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Average Order Value</p>
           <p className="text-2xl font-bold text-gray-900 mt-2">₹{data.avgOrderValue.toLocaleString('en-IN')}</p>
           <p className="text-[11px] text-emerald-600 font-medium mt-1">Healthy cart size</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-2xs">
+        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-2xs admin-card-hover">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Active Products</p>
           <p className="text-2xl font-bold text-gray-900 mt-2">{data.totalProducts}</p>
           <p className="text-[11px] text-gray-500 font-medium mt-1">In MongoDB inventory</p>

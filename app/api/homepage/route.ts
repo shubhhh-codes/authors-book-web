@@ -1,5 +1,6 @@
 import { connectDB } from '@/lib/db';
 import Product from '@/lib/schemas/Product';
+import { unstable_cache } from 'next/cache';
 import { successResponse, errorResponse, getSafeErrorMessage } from '@/lib/validations';
 import type { CollectionPreview } from '@/lib/types';
 
@@ -31,8 +32,8 @@ async function getCollectionCount(filter: Record<string, unknown>): Promise<numb
   }
 }
 
-export async function GET(): Promise<Response> {
-  try {
+const getCachedHomepageData = unstable_cache(
+  async () => {
     await connectDB();
 
     const [
@@ -50,6 +51,26 @@ export async function GET(): Promise<Response> {
       Promise.all(BOOKMARK_COLLECTIONS.map((c) => getCollectionCount(c.filter))),
       Promise.all(AUTHOR_COLLECTIONS.map((c) => getCollectionCount(c.filter))),
     ]);
+
+    return {
+      filmProducts,
+      bookCounts,
+      bookmarkCounts,
+      authorCounts,
+    };
+  },
+  ['homepage-data'],
+  { revalidate: 3600 }
+);
+
+export async function GET(): Promise<Response> {
+  try {
+    const {
+      filmProducts,
+      bookCounts,
+      bookmarkCounts,
+      authorCounts,
+    } = await getCachedHomepageData();
 
     const bookCollections: CollectionPreview[] = BOOK_COLLECTIONS.map((c, i) => ({
       name: c.name,

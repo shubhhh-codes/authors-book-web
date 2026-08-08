@@ -209,7 +209,7 @@ export default function ProductShowcase({ initialProducts = [] }: ProductShowcas
               return (
                 <Link
                   key={product._id}
-                  href={`/product/${product._id}`}
+                  href={`/product/${product.handle || product._id}`}
                   className="group block bg-[var(--paper-light)] border border-[var(--hairline)] rounded-2xl overflow-hidden hover:border-[var(--ink)] transition-all duration-300 shadow-2xs hover:shadow-md"
                   aria-label={`${product.title} – ₹${product.price}`}
                 >

@@ -4,6 +4,8 @@ import type { Product } from '@/lib/types';
 
 export default function ProductCard({ product }: { product: Product }) {
   const image = product.images?.[0];
+  const isSoldOut =
+    product.inventory?.quantity !== undefined && product.inventory.quantity <= 0;
   const hasDiscount =
     product.compareAtPrice && product.compareAtPrice > product.price;
   const discountPct = hasDiscount
@@ -12,7 +14,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
   return (
     <Link
-      href={`/product/${product._id}`}
+      href={`/product/${product.handle || product._id}`}
       className="group block border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
       aria-label={`${product.title} – ₹${product.price}`}
     >
@@ -23,7 +25,7 @@ export default function ProductCard({ product }: { product: Product }) {
             src={image.url}
             alt={image.alt || product.title}
             fill
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className={`object-cover transition-transform duration-500 ${isSoldOut ? 'opacity-60 grayscale-[30%]' : 'group-hover:scale-105'}`}
             unoptimized
           />
         ) : (
@@ -35,11 +37,15 @@ export default function ProductCard({ product }: { product: Product }) {
             </svg>
           </div>
         )}
-        {hasDiscount && (
+        {isSoldOut ? (
+          <span className="absolute top-2 left-2 bg-gray-900/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+            Sold Out
+          </span>
+        ) : hasDiscount ? (
           <span className="absolute top-2 left-2 bg-black text-white text-xs font-bold px-2 py-1 rounded-full">
             -{discountPct}%
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* Info */}
@@ -60,11 +66,15 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
 
         <button
-          className="mt-4 w-full bg-black text-white py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+          className={`mt-4 w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+            isSoldOut
+              ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              : 'bg-black text-white hover:bg-gray-800'
+          }`}
           type="button"
           aria-label={`View details for ${product.title}`}
         >
-          View Details
+          {isSoldOut ? 'Out of Stock' : 'View Details'}
         </button>
       </div>
     </Link>

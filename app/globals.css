@@ -5,12 +5,12 @@
   --font-inter: "Inter", sans-serif;
 
   /* Brand colours */
-  --ab-black:       #111111;
-  --ab-dark:        #222222;
-  --ab-light:       #f0f0f0;
-  --ab-white:       #ffffff;
+  --ab-black: #111111;
+  --ab-dark: #222222;
+  --ab-light: #f0f0f0;
+  --ab-white: #ffffff;
   --ab-border-dark: #000000;
-  --ab-border-light:#ffffff;
+  --ab-border-light: #ffffff;
 
   /* Spacing scale (mirrors Liquid padding_top/bottom 36–52 px) */
   --section-py: 36px;
@@ -34,7 +34,12 @@ body {
 }
 
 /* ── Typography ──────────────────────────────────────────────────── */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.1;
@@ -65,7 +70,7 @@ h1, h2, h3, h4, h5, h6 {
   text-decoration: none;
   color: inherit;
   padding: 24px;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -1px rgba(0, 0, 0, .06);
   isolation: isolate;
 }
 
@@ -87,13 +92,13 @@ h1, h2, h3, h4, h5, h6 {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,.05) 0%, rgba(0,0,0,.05) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, .05) 0%, rgba(0, 0, 0, .05) 100%);
   z-index: -1;
 }
 
 .book-grid-item:hover {
   transform: translateY(-5px);
-  box-shadow: 0 20px 25px -5px rgba(0,0,0,.1), 0 10px 10px -5px rgba(0,0,0,.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, .1), 0 10px 10px -5px rgba(0, 0, 0, .04);
 }
 
 .book-grid-content {
@@ -107,7 +112,7 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.1;
   margin-bottom: 12px;
   font-weight: 700;
-  text-shadow: 0 2px 4px rgba(0,0,0,.1);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, .1);
   letter-spacing: -0.02em;
   text-wrap: balance;
 }
@@ -122,7 +127,7 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: auto;
   border-radius: 30px;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 5px rgba(0,0,0,.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, .1);
   white-space: nowrap;
 }
 
@@ -151,7 +156,7 @@ h1, h2, h3, h4, h5, h6 {
   height: 100%;
   transform: rotate(12deg) translateY(20px) scale(0.95);
   transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-  filter: drop-shadow(0 10px 15px rgba(0,0,0,.2));
+  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, .2));
 }
 
 .book-grid-item:hover .book-grid-image-wrapper img {
@@ -219,16 +224,20 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: #f1f1f1;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
 :root {
   --paper: #eee8db;
   --paper-deep: #e4dccd;
@@ -260,6 +269,7 @@ body {
 }
 
 @layer base {
+
   button,
   a {
     color: inherit;
@@ -321,16 +331,11 @@ canvas:focus-visible {
   height: 100%;
   cursor: default;
   touch-action: pan-y;
-  opacity: 0;
-  transition: opacity 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: 1;
 }
 
 .shelf-canvas.is-dragging {
   cursor: default;
-}
-
-.is-ready .shelf-canvas {
-  opacity: 1;
 }
 
 .site-header {
@@ -405,20 +410,18 @@ canvas:focus-visible {
   bottom: -38px;
   left: -92px;
   content: "";
-  background: linear-gradient(
-    90deg,
-    rgba(238, 232, 219, 0.98) 0%,
-    rgba(238, 232, 219, 0.96) 35%,
-    rgba(238, 232, 219, 0.85) 60%,
-    rgba(238, 232, 219, 0.5) 80%,
-    rgba(238, 232, 219, 0.15) 92%,
-    rgba(238, 232, 219, 0) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(238, 232, 219, 0.98) 0%,
+      rgba(238, 232, 219, 0.96) 35%,
+      rgba(238, 232, 219, 0.85) 60%,
+      rgba(238, 232, 219, 0.5) 80%,
+      rgba(238, 232, 219, 0.15) 92%,
+      rgba(238, 232, 219, 0) 100%);
   pointer-events: none;
   touch-action: pan-y;
 }
 
-.browse-caption > * {
+.browse-caption>* {
   position: relative;
   z-index: 20;
   pointer-events: none;
@@ -499,7 +502,7 @@ canvas:focus-visible {
 
 .shelf-arrow {
   position: absolute;
-  z-index: 17;
+  z-index: 25;
   top: 49%;
   display: grid;
   width: 50px;
@@ -522,8 +525,8 @@ canvas:focus-visible {
 }
 
 .shelf-arrow:disabled {
-  cursor: default;
-  opacity: 0.25;
+  cursor: not-allowed;
+  opacity: 0.35;
 }
 
 .is-focused .shelf-arrow {
@@ -849,6 +852,7 @@ canvas:focus-visible {
     opacity: 0.15;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -986,7 +990,7 @@ canvas:focus-visible {
   text-transform: uppercase;
 }
 
-.focus-controls span + span::before {
+.focus-controls span+span::before {
   display: inline-block;
   width: 3px;
   height: 3px;
@@ -1045,7 +1049,10 @@ canvas:focus-visible {
   place-content: center;
   justify-items: center;
   background: var(--paper);
-  transition: transform 1.2s cubic-bezier(0.76, 0, 0.24, 1);
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  backface-visibility: hidden;
+  transition: transform 1.4s cubic-bezier(0.76, 0, 0.24, 1);
 }
 
 .curtain-layer {
@@ -1053,15 +1060,24 @@ canvas:focus-visible {
   z-index: 39;
   inset: 0;
   background: var(--paper-deep);
-  transition: transform 1.2s cubic-bezier(0.76, 0, 0.24, 1) 0.1s;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  backface-visibility: hidden;
+  transition: transform 1.4s cubic-bezier(0.76, 0, 0.24, 1) 0.12s;
 }
 
 .is-ready .loading-screen {
-  transform: translateY(-100%);
+  transform: translate3d(0, -100%, 0);
+  pointer-events: none;
 }
 
 .is-ready .curtain-layer {
-  transform: translateY(-100%);
+  transform: translate3d(0, -100%, 0);
+  pointer-events: none;
+}
+
+.is-ready .book-spine {
+  animation-play-state: paused !important;
 }
 
 .bookshelf-loader {
@@ -1142,6 +1158,7 @@ canvas:focus-visible {
   border: 1px solid rgba(37, 35, 31, 0.15);
   animation-delay: 0.76s;
 }
+
 .book-spine--3 .book-spine__stripe {
   background: rgba(37, 35, 31, 0.35);
 }
@@ -1163,15 +1180,19 @@ canvas:focus-visible {
 }
 
 @keyframes pullBook {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0) scale(1);
     filter: brightness(1);
   }
+
   25% {
     transform: translateY(-9px) scale(1.03);
     filter: brightness(1.12);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15), inset -1px 0 2px rgba(0, 0, 0, 0.25);
   }
+
   50% {
     transform: translateY(0) scale(1);
     filter: brightness(1);
@@ -1288,14 +1309,12 @@ canvas:focus-visible {
     right: 0;
     bottom: 0;
     left: 0;
-    background: linear-gradient(
-      180deg,
-      rgba(238, 232, 219, 0) 0%,
-      rgba(238, 232, 219, 0.3) 30%,
-      rgba(238, 232, 219, 0.7) 60%,
-      rgba(238, 232, 219, 0.92) 85%,
-      var(--paper) 100%
-    );
+    background: linear-gradient(180deg,
+        rgba(238, 232, 219, 0) 0%,
+        rgba(238, 232, 219, 0.3) 30%,
+        rgba(238, 232, 219, 0.7) 60%,
+        rgba(238, 232, 219, 0.92) 85%,
+        var(--paper) 100%);
   }
 
   .browse-caption h1 {
@@ -1508,6 +1527,7 @@ canvas:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -1517,4 +1537,80 @@ canvas:focus-visible {
     transition-duration: 1ms !important;
     transition-delay: 0ms !important;
   }
+}
+
+/* ── Admin Dashboard Animations & Micro-Interactions ─────────────── */
+@keyframes adminFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes adminScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes spinSlow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulseSuccess {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.animate-admin-fade {
+  animation: adminFadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-admin-scale {
+  animation: adminScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.admin-card-hover {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+
+.admin-card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+}
+
+.admin-row-hover {
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.admin-row-hover:hover {
+  transform: scale(1.002);
+}
+
+.btn-spinner {
+  animation: spinSlow 0.75s linear infinite;
+}
+
+.animate-pulse-success {
+  animation: pulseSuccess 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }

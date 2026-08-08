@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { isValidCatalogProduct } from '@/lib/catalogUtils';
 import type { Product, CartItem } from '@/lib/types';
 
 interface EditorialShowcaseProps {
@@ -15,6 +16,38 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
   const [activeTab, setActiveTab] = useState<'all' | 'books' | 'bookmarks'>('all');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [addedId, setAddedId] = useState<string | null>(null);
+  const [addedToastData, setAddedToastData] = useState<{ product: Product; quantity: number } | null>(null);
+
+  const tabNavRef = useRef<HTMLDivElement>(null);
+  const tabButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const [pillRect, setPillRect] = useState<{ left: number; width: number; isInitialized: boolean }>({
+    left: 0,
+    width: 0,
+    isInitialized: false,
+  });
+
+  const updatePill = useCallback(() => {
+    const activeBtn = tabButtonRefs.current[activeTab];
+    const navContainer = tabNavRef.current;
+    if (activeBtn && navContainer) {
+      const navBounds = navContainer.getBoundingClientRect();
+      const btnBounds = activeBtn.getBoundingClientRect();
+      setPillRect({
+        left: btnBounds.left - navBounds.left,
+        width: btnBounds.width,
+        isInitialized: true,
+      });
+    }
+  }, [activeTab]);
+
+  useLayoutEffect(() => {
+    updatePill();
+  }, [updatePill, products]);
+
+  useEffect(() => {
+    window.addEventListener('resize', updatePill);
+    return () => window.removeEventListener('resize', updatePill);
+  }, [updatePill]);
 
   useEffect(() => {
     async function fetchProducts() {
@@ -23,7 +56,8 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
         const res = await fetch('/api/products?limit=50');
         if (res.ok) {
           const data = await res.json();
-          setProducts(data.products || []);
+          const rawItems: Product[] = data.products || [];
+          setProducts(rawItems.filter(isValidCatalogProduct));
         }
       } catch (err) {
         console.error('Failed to fetch products for EditorialShowcase:', err);
@@ -72,19 +106,37 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
     });
   }, [products, activeTab, activeFilter]);
 
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startToastTimer = (duration = 7500) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setAddedToastData(null), duration);
+  };
+
   const handleQuickAdd = (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Prevent adding out of stock products
+    if (product.inventory?.quantity !== undefined && product.inventory.quantity <= 0) {
+      return;
+    }
 
     try {
       const saved = localStorage.getItem('ab_cart') || localStorage.getItem('cart') || '[]';
       const cart: CartItem[] = JSON.parse(saved);
       const existing = cart.find((item) => item._id === product._id);
+      let totalQty = 1;
 
       if (existing) {
+        // Enforce inventory max limit
+        const maxStock = product.inventory?.quantity ?? 99;
+        if (existing.quantity >= maxStock) return;
         existing.quantity += 1;
+        totalQty = existing.quantity;
       } else {
         cart.push({ ...product, quantity: 1 });
+        totalQty = 1;
       }
 
       localStorage.setItem('ab_cart', JSON.stringify(cart));
@@ -92,11 +144,9 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
       window.dispatchEvent(new Event('cart-updated'));
 
       setAddedId(product._id);
-      setTimeout(() => setAddedId(null), 1500);
-
-      if (onOpenCart) {
-        onOpenCart();
-      }
+      setAddedToastData({ product, quantity: totalQty });
+      setTimeout(() => setAddedId(null), 2500);
+      startToastTimer(7500);
     } catch (err) {
       console.error('Quick add error:', err);
     }
@@ -126,79 +176,82 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
           </p>
         </div>
 
-        {/* Category Tabs */}
+        {/* Category Tabs with Ultra-Smooth Concentric Spring Sliding Pill */}
         <div className="flex justify-center mb-8">
-          <div className="inline-flex p-1 bg-[var(--paper-light)] border border-[var(--hairline)] rounded-full text-xs font-[family-name:var(--sans)] shadow-2xs">
-            <button
-              type="button"
-              onClick={() => { setActiveTab('all'); setActiveFilter('all'); }}
-              style={
-                activeTab === 'all'
-                  ? { backgroundColor: 'var(--ink)', color: 'var(--paper-light)' }
-                  : { color: 'var(--ink-soft)' }
-              }
-              className={`px-5 py-2.5 rounded-full font-semibold uppercase tracking-wider transition-all duration-200 ${
-                activeTab === 'all' ? 'shadow-xs' : 'hover:text-[var(--ink)]'
+          <div
+            ref={tabNavRef}
+            className="relative inline-flex items-center p-1 bg-[var(--paper-light)] border border-[var(--hairline)] rounded-full text-xs font-[family-name:var(--sans)] shadow-2xs overflow-hidden"
+          >
+            {/* GPU-Accelerated Concentric Spring Sliding Pill */}
+            <div
+              aria-hidden="true"
+              className={`absolute top-1 bottom-1 left-0 rounded-full bg-[var(--ink)] shadow-sm pointer-events-none ${
+                pillRect.isInitialized
+                  ? 'transition-all duration-400 ease-[cubic-bezier(0.34,1.45,0.64,1)]'
+                  : 'opacity-0'
               }`}
-            >
-              All Items ({counts.all})
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('books'); setActiveFilter('all'); }}
-              style={
-                activeTab === 'books'
-                  ? { backgroundColor: 'var(--ink)', color: 'var(--paper-light)' }
-                  : { color: 'var(--ink-soft)' }
-              }
-              className={`px-5 py-2.5 rounded-full font-semibold uppercase tracking-wider transition-all duration-200 ${
-                activeTab === 'books' ? 'shadow-xs' : 'hover:text-[var(--ink)]'
-              }`}
-            >
-              Books ({counts.books})
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('bookmarks'); setActiveFilter('all'); }}
-              style={
-                activeTab === 'bookmarks'
-                  ? { backgroundColor: 'var(--ink)', color: 'var(--paper-light)' }
-                  : { color: 'var(--ink-soft)' }
-              }
-              className={`px-5 py-2.5 rounded-full font-semibold uppercase tracking-wider transition-all duration-200 ${
-                activeTab === 'bookmarks' ? 'shadow-xs' : 'hover:text-[var(--ink)]'
-              }`}
-            >
-              Bookmarks ({counts.bookmarks})
-            </button>
+              style={{
+                transform: `translate3d(${pillRect.left}px, 0, 0)`,
+                width: `${pillRect.width}px`,
+              }}
+            />
+
+            {(['all', 'books', 'bookmarks'] as const).map((tabKey) => {
+              const label =
+                tabKey === 'all'
+                  ? `All Items (${counts.all})`
+                  : tabKey === 'books'
+                  ? `Books (${counts.books})`
+                  : `Bookmarks (${counts.bookmarks})`;
+              const isTabActive = activeTab === tabKey;
+
+              return (
+                <button
+                  key={tabKey}
+                  ref={(el) => { tabButtonRefs.current[tabKey] = el; }}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tabKey);
+                    setActiveFilter('all');
+                  }}
+                  className={`relative z-10 px-5 sm:px-6 py-2.5 rounded-full font-semibold uppercase tracking-wider text-center transition-colors duration-300 active:scale-95 cursor-pointer select-none ${
+                    isTabActive
+                      ? 'text-[var(--paper-light)]'
+                      : 'text-[var(--ink-soft)] hover:text-[var(--ink)]'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Filter Chips */}
-        <div className="flex flex-wrap justify-center gap-2 mb-12 text-xs font-[family-name:var(--sans)]">
+        {/* Filter Chips with Fluid Elastic Hover & Press Physics */}
+        <div className="flex flex-wrap justify-center gap-3 mb-12 text-xs font-[family-name:var(--sans)]">
           {[
             { id: 'all', label: 'All Collections' },
             { id: 'bestseller', label: 'Best Sellers' },
             { id: 'film', label: 'Appeared in Films' },
             { id: '3d', label: '3D Bookmarks' },
             { id: 'iconic', label: 'Iconic Series' },
-          ].map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setActiveFilter(f.id)}
-              style={
-                activeFilter === f.id
-                  ? { backgroundColor: 'var(--ink)', borderColor: 'var(--ink)', color: 'var(--paper-light)' }
-                  : { backgroundColor: 'var(--paper-light)', borderColor: 'var(--hairline)', color: 'var(--ink-soft)' }
-              }
-              className={`px-4 py-1.5 rounded-full border transition-colors ${
-                activeFilter === f.id ? 'font-semibold' : 'hover:border-[var(--ink)]'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+          ].map((f) => {
+            const isActive = activeFilter === f.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setActiveFilter(f.id)}
+                className={`relative px-4.5 py-2 rounded-full border text-xs font-medium tracking-wide transition-all duration-350 ease-[cubic-bezier(0.34,1.4,0.64,1)] active:scale-90 cursor-pointer select-none ${
+                  isActive
+                    ? 'bg-[var(--ink)] border-[var(--ink)] text-[var(--paper-light)] shadow-[0_4px_14px_rgba(0,0,0,0.18)] font-semibold -translate-y-1 scale-105'
+                    : 'bg-[var(--paper-light)] border-[var(--hairline)] text-[var(--ink-soft)] hover:border-[var(--ink)] hover:text-[var(--ink)] hover:-translate-y-0.5 hover:shadow-xs'
+                }`}
+              >
+                {f.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Product Cards Grid */}
@@ -229,13 +282,15 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
                 ? Math.round(((product.compareAtPrice! - product.price) / product.compareAtPrice!) * 100)
                 : 0;
               const isJustAdded = addedId === product._id;
+              const isSoldOut =
+                product.inventory?.quantity !== undefined && product.inventory.quantity <= 0;
 
               return (
                 <div
                   key={product._id}
                   className="group relative flex flex-col bg-[var(--paper-light)] border border-[var(--hairline)] rounded-2xl overflow-hidden hover:border-[var(--ink)] transition-all duration-300 shadow-2xs hover:shadow-md"
                 >
-                  <Link href={`/product/${product._id}`} className="block relative aspect-[3/4] bg-[var(--paper)] overflow-hidden">
+                  <Link href={`/product/${product.handle || product._id}`} className="block relative aspect-[3/4] bg-[var(--paper)] overflow-hidden">
                     {image ? (
                       <Image
                         src={image.url}
@@ -256,19 +311,28 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
                       </div>
                     )}
 
-                    {hasDiscount && (
+                    {isSoldOut ? (
+                      <span className="absolute top-3 left-3 bg-gray-900/90 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full font-[family-name:var(--sans)] shadow-xs">
+                        Sold Out
+                      </span>
+                    ) : hasDiscount ? (
                       <span className="absolute top-3 left-3 bg-[var(--ink)] text-[var(--paper)] text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full font-[family-name:var(--sans)] shadow-xs">
                         -{discountPct}%
                       </span>
-                    )}
+                    ) : null}
 
                     {/* Quick Add Overlay Button on Hover */}
                     <button
                       type="button"
+                      disabled={isSoldOut}
                       onClick={(e) => handleQuickAdd(e, product)}
-                      className="absolute bottom-3 inset-x-3 bg-[var(--ink)] text-[var(--paper)] text-[11px] font-semibold uppercase tracking-wider py-2.5 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 font-[family-name:var(--sans)] shadow-sm hover:bg-[var(--accent)]"
+                      className={`absolute bottom-3 inset-x-3 text-[11px] font-semibold uppercase tracking-wider py-2.5 rounded-xl transition-all duration-200 transform font-[family-name:var(--sans)] shadow-sm ${
+                        isSoldOut
+                          ? 'bg-gray-300 text-gray-600 opacity-90 cursor-not-allowed translate-y-0'
+                          : 'bg-[var(--ink)] text-[var(--paper)] opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 hover:bg-[var(--accent)]'
+                      }`}
                     >
-                      {isJustAdded ? '✓ Added to Cart' : '+ Quick Add'}
+                      {isSoldOut ? 'Out of Stock' : isJustAdded ? '✓ Added to Cart' : '+ Quick Add'}
                     </button>
                   </Link>
 
@@ -280,7 +344,7 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
                         </p>
                       )}
 
-                      <Link href={`/product/${product._id}`}>
+                      <Link href={`/product/${product.handle || product._id}`}>
                         <h3 className="text-sm sm:text-base font-normal text-[var(--ink)] line-clamp-2 leading-snug hover:text-[var(--accent)] transition-colors mt-0.5">
                           {product.title}
                         </h3>
@@ -299,14 +363,16 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
                         )}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={(e) => handleQuickAdd(e, product)}
-                        className="text-[11px] font-semibold text-[var(--ink-soft)] hover:text-[var(--ink)] font-[family-name:var(--sans)] sm:hidden"
-                        aria-label={`Add ${product.title} to cart`}
-                      >
-                        + Add
-                      </button>
+                      {!isSoldOut && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleQuickAdd(e, product)}
+                          className="text-[11px] font-semibold text-[var(--ink-soft)] hover:text-[var(--ink)] font-[family-name:var(--sans)] sm:hidden"
+                          aria-label={`Add ${product.title} to cart`}
+                        >
+                          + Add
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -319,13 +385,73 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
         <div className="text-center mt-16">
           <Link
             href="/shop"
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-[var(--ink)] text-[var(--paper)] text-xs font-semibold uppercase tracking-widest rounded-full hover:bg-[var(--ink-soft)] transition-colors font-[family-name:var(--sans)] shadow-sm"
+            className="inline-flex items-center gap-2.5 px-8 py-3.5 bg-[var(--ink)] text-[var(--paper-light)] text-xs font-semibold uppercase tracking-widest rounded-full hover:bg-[var(--ink-soft)] hover:-translate-y-0.5 hover:shadow-md active:scale-95 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] font-[family-name:var(--sans)] shadow-sm"
           >
             <span>Browse Full Store Catalog</span>
-            <span aria-hidden="true">→</span>
+            <span aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1">→</span>
           </Link>
         </div>
       </div>
+
+      {/* Floating Toast Notification on Quick Add */}
+      {addedToastData && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onMouseEnter={() => {
+            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+          }}
+          onMouseLeave={() => startToastTimer(5000)}
+          className="fixed bottom-6 right-6 z-50 bg-[#1a1714] text-[#f4f0ea] px-4 py-3.5 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-between gap-4 max-w-sm w-full animate-in fade-in slide-in-from-bottom-5 duration-300"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            {addedToastData.product.images?.[0] && (
+              <div className="relative w-10 h-12 rounded-lg overflow-hidden bg-[#e9e3da] shrink-0 border border-white/10">
+                <Image
+                  src={addedToastData.product.images[0].url}
+                  alt={addedToastData.product.title}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+            )}
+            <div className="overflow-hidden">
+              <div className="text-xs font-bold truncate flex items-center gap-1.5 text-emerald-400">
+                <span>✓</span> Added to Cart
+              </div>
+              <div className="text-[11px] text-[#ded7cb]/90 truncate">
+                {addedToastData.product.title} (Qty: {addedToastData.quantity})
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+                setAddedToastData(null);
+                if (onOpenCart) onOpenCart();
+              }}
+              className="px-3.5 py-2 bg-white text-black font-bold text-[10px] uppercase tracking-wider rounded-lg hover:bg-gray-100 transition-all cursor-pointer shadow-xs"
+            >
+              VIEW CART
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+                setAddedToastData(null);
+              }}
+              className="p-1 text-gray-400 hover:text-white text-xs transition-colors cursor-pointer"
+              aria-label="Close notification"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

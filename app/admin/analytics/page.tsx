@@ -8,11 +8,19 @@ export const dynamic = 'force-dynamic';
 async function getAnalyticsData() {
   try {
     await connectDB();
-    const orders = await Order.find({}).lean<OrderType[]>();
+    const aggResult = await Order.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: '$total' },
+          totalOrders: { $sum: 1 }
+        }
+      }
+    ]);
     const productsCount = await Product.countDocuments({ published: true });
 
-    const totalSales = orders.reduce((sum, o) => sum + (o.total || 0), 0);
-    const totalOrders = orders.length;
+    const totalSales = aggResult[0]?.totalSales || 0;
+    const totalOrders = aggResult[0]?.totalOrders || 0;
     const avgOrderValue = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
 
     return {

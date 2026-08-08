@@ -57,7 +57,7 @@ export default function OrderDetailPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          shipmentId: trackingNumber || `TRK-${Date.now().toString().slice(-6)}`,
+          shipmentId: trackingNumber.trim() || 'Pending Courier AWB',
           status: 'shipped',
         }),
       });
@@ -176,12 +176,38 @@ export default function OrderDetailPage() {
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Order Fulfillment</h2>
 
             {order.shipmentId ? (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 font-medium">
-                ✓ Order fulfilled & shipped. Tracking Number: <strong>{order.shipmentId}</strong>
+              <div className="space-y-3">
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 font-medium flex items-center justify-between gap-2">
+                  <span>✓ Order fulfilled & shipped. Tracking Number: <strong>{order.shipmentId}</strong></span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setUpdating(true);
+                      try {
+                        const res = await fetch(`/api/admin/orders/${params.id}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ shipmentId: '', status: 'paid' }),
+                        });
+                        if (res.ok) {
+                          const data = await res.json();
+                          setOrder(data.order);
+                        }
+                      } catch (err) {
+                        console.error('Clear shipment error:', err);
+                      } finally {
+                        setUpdating(false);
+                      }
+                    }}
+                    className="text-xs text-red-600 hover:underline font-normal shrink-0"
+                  >
+                    Remove / Edit
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleFulfill} className="space-y-3">
-                <p className="text-gray-600">Enter courier tracking number to fulfill this order:</p>
+                <p className="text-gray-600">Enter courier tracking number to fulfill this order (optional):</p>
                 <input
                   type="text"
                   placeholder="e.g. AWB-987654321"
@@ -192,7 +218,7 @@ export default function OrderDetailPage() {
                 <button
                   type="submit"
                   disabled={fulfilling}
-                  className="bg-black text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 disabled:opacity-50 text-xs"
+                  className="bg-black text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 disabled:opacity-50 text-xs cursor-pointer"
                 >
                   {fulfilling ? 'Fulfilling...' : 'Mark as Fulfilled / Shipped'}
                 </button>

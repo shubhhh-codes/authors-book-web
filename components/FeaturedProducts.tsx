@@ -20,7 +20,7 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <Link
-      href={`/product/${product._id}`}
+      href={`/product/${product.handle || product._id}`}
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black rounded-xl"
       aria-label={`${product.title} – ₹${product.price}`}
     >
