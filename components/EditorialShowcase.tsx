@@ -69,12 +69,20 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
   }, []);
 
   const counts = useMemo(() => {
-    const books = products.filter(
-      (p) => (p.type || '').toLowerCase() === 'book' || (p.category || '').toLowerCase() === 'book'
-    ).length;
-    const bookmarks = products.filter(
-      (p) => (p.type || '').toLowerCase() === 'bookmark' || (p.category || '').toLowerCase() === 'bookmark'
-    ).length;
+    let books = 0;
+    let bookmarks = 0;
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      const type = (p.type || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
+
+      if (type === 'book' || cat === 'book') {
+        books++;
+      }
+      if (type === 'bookmark' || cat === 'bookmark') {
+        bookmarks++;
+      }
+    }
     return { all: products.length, books, bookmarks };
   }, [products]);
 
@@ -86,19 +94,19 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
       if (activeTab === 'bookmarks' && typeLower !== 'bookmark') return false;
 
       if (activeFilter === 'bestseller') {
-        const hasTag = product.tags?.some((t) => /best|seller/i.test(t));
+        const hasTag = product.tags?.some((t) => {
+          const lowerTag = t.toLowerCase();
+          return lowerTag.includes('best') || lowerTag.includes('seller');
+        });
         if (!hasTag) return false;
-      }
-      if (activeFilter === 'film') {
-        const hasTag = product.tags?.some((t) => /film/i.test(t));
+      } else if (activeFilter === 'film') {
+        const hasTag = product.tags?.some((t) => t.toLowerCase().includes('film'));
         if (!hasTag) return false;
-      }
-      if (activeFilter === '3d') {
-        const hasTag = product.tags?.some((t) => /3d/i.test(t));
+      } else if (activeFilter === '3d') {
+        const hasTag = product.tags?.some((t) => t.toLowerCase().includes('3d'));
         if (!hasTag) return false;
-      }
-      if (activeFilter === 'iconic') {
-        const hasTag = product.tags?.some((t) => /iconic/i.test(t));
+      } else if (activeFilter === 'iconic') {
+        const hasTag = product.tags?.some((t) => t.toLowerCase().includes('iconic'));
         if (!hasTag) return false;
       }
 
