@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Product } from '@/lib/types';
@@ -10,7 +11,12 @@ interface FeaturedProductsProps {
   columns?: number;
 }
 
-function ProductCard({ product }: { product: Product }) {
+// ⚡ Bolt: Wrapped internal ProductCard in React.memo()
+// 💡 What: Added memoization to the inline ProductCard component.
+// 🎯 Why: FeaturedProducts renders lists of products. React.memo prevents unnecessary re-renders of cards.
+// 📊 Impact: O(N) redundant renders eliminated in featured grids.
+// 🔬 Measurement: React DevTools Profiler will show ProductCard bypassing renders.
+const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
   const image = product.images?.[0];
   const hasDiscount =
     product.compareAtPrice && product.compareAtPrice > product.price;
@@ -71,7 +77,7 @@ function ProductCard({ product }: { product: Product }) {
       </div>
     </Link>
   );
-}
+});
 
 export default function FeaturedProducts({
   title = 'APPEARED IN FILMS',

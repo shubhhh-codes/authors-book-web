@@ -1,8 +1,14 @@
+import { memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/lib/types';
 
-export default function ProductCard({ product }: { product: Product }) {
+// ⚡ Bolt: Wrapped ProductCard in React.memo()
+// 💡 What: Added memoization to the ProductCard component.
+// 🎯 Why: ProductCard is rendered in large lists (e.g. Shop grid, FeaturedProducts). When parent components (like Shop page with pagination/filters) re-render, all ProductCards were unnecessarily re-rendering even if their `product` prop didn't change.
+// 📊 Impact: Eliminates O(N) redundant renders in product grids.
+// 🔬 Measurement: React DevTools Profiler will show ProductCard bypassing renders when parent state updates.
+const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
   const image = product.images?.[0];
   const isSoldOut =
     product.inventory?.quantity !== undefined && product.inventory.quantity <= 0;
@@ -79,4 +85,6 @@ export default function ProductCard({ product }: { product: Product }) {
       </div>
     </Link>
   );
-}
+});
+
+export default ProductCard;
