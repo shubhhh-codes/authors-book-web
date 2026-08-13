@@ -1,0 +1,3 @@
+## 2026-08-13 - [Reuse Three.js Math Objects in Animation Loops]
+**Learning:** Instantiating new objects like `new THREE.Vector3()` in tight animation loops (e.g. `requestAnimationFrame`) can cause significant garbage collection pressure, leading to frame drops and memory leaks in a Next.js/Three.js setup.
+**Action:** Always instantiate reusable vectors, quaternions, or matrices at the class scope (e.g., `private sharedWorldPosition = new THREE.Vector3();`) and use methods that modify the instance in place (e.g., `getWorldPosition(this.sharedWorldPosition)`) rather than re-creating them on every frame.
