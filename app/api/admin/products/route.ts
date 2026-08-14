@@ -1,5 +1,6 @@
 import { connectDB } from '@/lib/db';
 import Product from '@/lib/schemas/Product';
+import { pushProductToShiprocket } from '@/lib/services/shiprocket-catalog-webhook';
 import {
   AdminProductCreateSchema,
   parseRequestBody,
@@ -126,6 +127,9 @@ export async function POST(request: Request): Promise<Response> {
         }
       }
     }
+
+    // Push product to Shiprocket catalog for real-time sync (non-blocking)
+    pushProductToShiprocket(newProduct!.toObject()).catch(() => {});
 
     return successResponse(
       { success: true, product: { ...newProduct!.toObject(), _id: String(newProduct!._id) } },

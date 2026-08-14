@@ -6,7 +6,7 @@
     "dev": "cross-env NODE_OPTIONS=\"--require ./dns-preload.cjs\" next dev",
     "build": "next build",
     "start": "cross-env NODE_OPTIONS=\"--require ./dns-preload.cjs\" next start",
-    "seed": "node scripts/seed.js",
+    "seed": "cross-env NODE_OPTIONS=\"--require ./dns-preload.cjs\" node scripts/seed.js",
     "test": "npx tsc --noEmit"
   },
   "dependencies": {

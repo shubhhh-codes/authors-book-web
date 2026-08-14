@@ -1,17 +1,22 @@
 export interface ProductImage {
   url: string;
-  alt: string;
-  position: number;
+  src?: string;
+  alt?: string;
+  position?: number;
 }
 
 export interface Product {
-  _id: string;
-  handle: string;
+  _id?: string;
+  id?: number | string;
+  handle?: string;
   title: string;
   description?: string;
+  body_html?: string;
   vendor?: string;
   category?: string;
   type?: string;
+  product_type?: string;
+  status?: string;
   tags?: string[];
   published?: boolean;
   sku?: string;
@@ -23,6 +28,17 @@ export interface Product {
     policy: string;
   };
   images: ProductImage[];
+  image?: { src: string };
+  variants?: Array<{
+    id: number | string;
+    title: string;
+    price: string;
+    quantity: number;
+    sku: string;
+    updated_at: string;
+    image: { src: string };
+    weight: number;
+  }>;
   seoTitle?: string;
   seoDescription?: string;
   bookmarkShape?: string;
@@ -31,7 +47,9 @@ export interface Product {
   targetAudience?: string;
   genre?: string;
   language?: string;
+  shiprocketVariantId?: string | number;
   createdAt?: string;
+  updated_at?: string;
 }
 
 export interface OrderItem {
@@ -143,6 +161,14 @@ export interface RazorpayConstructor {
 
 // ── Shiprocket Checkout (SRC) ────────────────────────────────
 
+export interface VariantMapping {
+  localVariantId: number;
+  localProductId: number;
+  sku: string;
+  shiprocketVariantId?: string;
+  syncedAt: Date;
+}
+
 export interface SRCSessionResponse {
   success: boolean;
   data?: {
@@ -158,16 +184,41 @@ export interface SRCSessionResponse {
   };
 }
 
+export interface SRCWebhookItem {
+  variant_id?: string | number;
+  sku?: string;
+  quantity: number;
+  price?: number;
+  title?: string;
+  [key: string]: unknown;
+}
+
 export interface SRCWebhookEvent {
-  event: 'order.created' | 'order.confirmed' | 'order.failed' | 'order.cancelled';
-  data: {
-    order_id: string;
-    session_id: string;
-    order_amount: number;
-    payment_status: 'completed' | 'failed' | 'pending';
-    transaction_id?: string;
-    timestamp: string;
+  event?: 'order.created' | 'order.confirmed' | 'order.failed' | 'order.cancelled' | string;
+  order_id?: string;
+  status?: string;
+  phone?: string;
+  email?: string;
+  payment_type?: string;
+  total_amount_payable?: number;
+  cart_data?: {
+    items: SRCWebhookItem[];
+    [key: string]: unknown;
   };
+  data?: {
+    order_id: string;
+    session_id?: string;
+    order_amount?: number;
+    payment_status?: 'completed' | 'failed' | 'pending';
+    transaction_id?: string;
+    timestamp?: string;
+    cart_data?: {
+      items: SRCWebhookItem[];
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
 }
 
 export interface CheckoutSessionRequest {
@@ -240,6 +291,7 @@ export interface IProduct {
   category?: string;
   collectionId?: string;
   images: Array<{ url: string; alt: string; position?: number }>;
+  shiprocketVariantId?: string;
   dimensions?: {
     length: number;
     width: number;

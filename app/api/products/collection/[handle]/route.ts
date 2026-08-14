@@ -1,6 +1,7 @@
 import { connectDB } from '@/lib/db';
 import Product from '@/lib/schemas/Product';
 import { errorResponse, successResponse, escapeRegex, getSafeErrorMessage } from '@/lib/validations';
+import { formatProductForShiprocket } from '@/lib/services/catalogTransform';
 
 /**
  * GET /api/products/collection/[handle]
@@ -59,6 +60,20 @@ export async function GET(
       Product.countDocuments(filter),
     ]);
 
+    const formatProduct = (p: any) => {
+      const formatted = formatProductForShiprocket(p);
+      return {
+        ...p,
+        _id: String(p._id),
+        id: formatted.id,
+        body_html: formatted.body_html,
+        product_type: formatted.product_type,
+        status: formatted.status,
+        variants: formatted.variants,
+        image: formatted.image,
+      };
+    };
+
     if (total === 0 && by === 'auto') {
       // Fallback: try tag match
       const tagFilter = {
@@ -75,7 +90,7 @@ export async function GET(
       return successResponse({
         collection: handle,
         matchedBy: 'tag',
-        products: tagProducts.map((p) => ({ ...p, _id: String(p._id) })),
+        products: tagProducts.map(formatProduct),
         pagination: { total: tagTotal, page, limit, pages: Math.ceil(tagTotal / limit) },
       });
     }
@@ -83,7 +98,7 @@ export async function GET(
     return successResponse({
       collection: handle,
       matchedBy: by,
-      products: products.map((p) => ({ ...p, _id: String(p._id) })),
+      products: products.map(formatProduct),
       pagination: { total, page, limit, pages: Math.ceil(total / limit) },
     });
   } catch (error) {

@@ -31,11 +31,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       (sum, item) => sum + item.price * item.quantity,
       0
     );
-    const totalAmountPaise = Math.round(totalAmountRupees * 100);
 
     const srcPayload = {
       order_id: orderId,
-      order_amount: totalAmountPaise,
+      order_amount: totalAmountRupees,
       order_currency: 'INR',
       customer_name: validated.customer.name,
       customer_email: validated.customer.email,
@@ -60,11 +59,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         sku: item.sku || item.id,
         title: item.title,
         quantity: item.quantity,
-        amount: Math.round(item.price * 100),
+        amount: item.price,
       })),
       channel_id: process.env.NEXT_PUBLIC_SRC_CHANNEL_ID || '',
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/checkout/success?order_id=${orderId}`,
-      notify_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/shiprocket`,
+      return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://authorsbook.vercel.app'}/api/checkout/success?order_id=${orderId}`,
+      notify_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://authorsbook.vercel.app'}/api/webhooks/shiprocket`,
       udf1: validated.customerId || 'guest',
     };
 

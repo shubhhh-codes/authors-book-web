@@ -4,28 +4,21 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Navigation from '@/components/Navigation';
-import { useRouter } from 'next/navigation';
-import type { CartItem, RazorpayResponse, RazorpayConstructor } from '@/lib/types';
+import type { CartItem } from '@/lib/types';
+
+interface HeadlessCheckoutInstance {
+  addToCart: (event: unknown, token: string, options?: { fallbackUrl: string }) => void;
+}
 
 declare global {
   interface Window {
-    Razorpay: RazorpayConstructor;
+    HeadlessCheckout?: HeadlessCheckoutInstance;
   }
 }
 
 export default function Cart() {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    street: '',
-    city: '',
-    state: '',
-    zip: '',
-  });
 
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
@@ -42,28 +35,33 @@ export default function Cart() {
   const shippingCost = subtotal > 500 ? 0 : 100;
   const total = subtotal + shippingCost;
 
-  const removeItem = (productId: string) => {
-    const updated = cart.filter((item: CartItem) => item._id !== productId);
+  const getItemId = (item: CartItem): string => String(item.id ?? item._id ?? '');
+
+  const removeItem = (productId: string | number) => {
+    const strId = String(productId);
+    const updated = cart.filter((item: CartItem) => getItemId(item) !== strId);
     setCart(updated);
     localStorage.setItem('cart', JSON.stringify(updated));
+    localStorage.setItem('ab_cart', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('cart-updated'));
   };
 
-  const updateQuantity = (productId: string, newQuantity: number) => {
+  const updateQuantity = (productId: string | number, newQuantity: number) => {
     if (newQuantity < 1) return;
+    const strId = String(productId);
 
     const updated = cart.map((item: CartItem) =>
-      item._id === productId ? { ...item, quantity: newQuantity } : item
+      getItemId(item) === strId ? { ...item, quantity: newQuantity } : item
     );
     setCart(updated);
     localStorage.setItem('cart', JSON.stringify(updated));
+    localStorage.setItem('ab_cart', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('cart-updated'));
   };
 
-  const handleCheckout = async () => {
-    if (!formData.name || !formData.email || !formData.phone || !formData.street) {
-      alert('Please fill all required fields');
-      return;
-    }
-
+  const handleCheckout = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (cart.length === 0) {
       alert('Cart is empty');
       return;
@@ -72,106 +70,40 @@ export default function Cart() {
     setLoading(true);
 
     try {
-      const checkoutItems = cart.map((item: CartItem) => ({
-        productId: item._id,
-        handle: item.handle || '',
-        title: item.title,
-        sku: item.sku || '',
-        price: item.price,
-        quantity: item.quantity,
-      }));
-
-      const response = await fetch('/api/checkout', {
+      const response = await fetch('/api/checkout/initiate-fastrr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: checkoutItems,
-          subtotal,
-          shippingCost,
-          total,
-          customerName: formData.name,
-          customerEmail: formData.email,
-          customerPhone: formData.phone,
-          shippingAddress: {
-            street: formData.street,
-            city: formData.city,
-            state: formData.state,
-            zip: formData.zip,
-          },
+          items: cart.map((item) => ({
+            id: getItemId(item),
+            quantity: item.quantity,
+            sku: item.sku || '',
+          })),
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMessage = errorData.error || 'Checkout failed';
-        console.error(`[Checkout Error ${response.status}]`, errorMessage);
-        throw new Error(errorMessage);
+        throw new Error(errorData.error || 'Failed to initiate Fastrr session');
       }
 
       const data = await response.json();
 
-      if (!data.razorpayOrderId || !data.orderId) {
-        console.error('[Checkout Error] Missing required response fields:', data);
-        throw new Error('Invalid server response - missing order details');
+      if (!data.token) {
+        throw new Error('Access token not returned from server');
       }
 
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => {
-        const options = {
-          key: data.razorpayKey,
-          amount: data.amount,
-          currency: 'INR',
-          order_id: data.razorpayOrderId,
-          customer_notification: 1,
-          handler: async (razorpayResponse: RazorpayResponse) => {
-            const verifyRes = await fetch('/api/verify-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                orderId: data.orderId,
-                razorpayOrderId: data.razorpayOrderId,
-                razorpayPaymentId: razorpayResponse.razorpay_payment_id,
-                razorpaySignature: razorpayResponse.razorpay_signature,
-              }),
-            });
-
-            const verifyData = await verifyRes.json();
-
-            if (!verifyRes.ok) {
-              console.error('[Payment Verification Error]', verifyData);
-              alert(`Payment verification failed: ${verifyData.error || 'Unknown error'}`);
-              return;
-            }
-
-            if (verifyData.success) {
-              localStorage.removeItem('cart');
-              router.push(`/order-success/${data.bookingId}`);
-            } else {
-              console.error('[Payment Verification Failed]', verifyData);
-              alert('Payment verification failed: ' + (verifyData.message || 'Unknown error'));
-            }
-          },
-          prefill: {
-            name: formData.name,
-            email: formData.email,
-            contact: formData.phone,
-          },
-        };
-
-        const razorpay = new window.Razorpay(options);
-        razorpay.open();
-      };
-      document.body.appendChild(script);
+      if (window.HeadlessCheckout) {
+        window.HeadlessCheckout.addToCart(e.nativeEvent, data.token, {
+          fallbackUrl: '/cart',
+        });
+      } else {
+        console.warn('[Fastrr] HeadlessCheckout SDK not loaded.');
+        alert('Fastrr Checkout is loading, please try again in a moment.');
+      }
     } catch (error) {
-      const err = error as Error;
-      console.error('[Checkout Exception]', {
-        message: err.message,
-        stack: err.stack,
-      });
-
-      const userMessage = err.message || 'Checkout failed. Please try again.';
-      alert('Checkout error: ' + userMessage);
+      console.error('[Checkout error]', error);
+      alert(error instanceof Error ? error.message : 'Checkout initialization failed');
     } finally {
       setLoading(false);
     }
@@ -181,146 +113,102 @@ export default function Cart() {
     <>
       <Navigation />
       {cart.length === 0 ? (
-        <div className="max-w-7xl mx-auto px-6 py-16 text-center">
-          <h1 className="text-3xl font-bold mb-4">Your Cart is Empty</h1>
-          <Link href="/shop" className="text-blue-600 hover:underline">
-            Continue Shopping
+        <div className="max-w-7xl mx-auto px-6 py-16 text-center font-serif">
+          <h1 className="text-3xl font-normal mb-4 text-[#1a1714]">Your Cart is Empty</h1>
+          <p className="text-sm text-[#8c8275] mb-8 font-sans">You have no items in your library bag.</p>
+          <Link href="/shop" className="inline-block bg-[#1a1714] text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#2c2622] transition-colors font-sans">
+            Explore Books
           </Link>
         </div>
       ) : (
         <div className="max-w-7xl mx-auto px-6 py-12">
-          <h1 className="text-4xl font-bold mb-8">Shopping Cart</h1>
+          <h1 className="text-4xl font-serif font-normal mb-10 text-[#1a1714] text-center">Your Library Bag</h1>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <div className="space-y-4">
-                {cart.map((item) => (
-                  <div key={item._id} className="border border-gray-200 rounded-lg p-4 flex gap-4">
-                    {item.images?.[0] && (
-                      <div className="relative w-24 h-24 flex-shrink-0">
-                        <Image
-                          src={item.images[0].url}
-                          alt={item.title}
-                          fill
-                          className="object-cover rounded"
-                          unoptimized
-                        />
-                      </div>
-                    )}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="lg:col-span-2 space-y-6">
+              {cart.map((item) => {
+                const itemId = getItemId(item);
+                const firstImg = item.images?.[0] as any;
+                const img = firstImg?.url || firstImg?.src || item.image?.src;
+                return (
+                <div key={itemId} className="border border-[#ded7cb] rounded-lg p-5 flex gap-5 bg-white shadow-xs">
+                  {img && (
+                    <div className="relative w-24 h-32 flex-shrink-0 border border-[#e0d9cf] rounded overflow-hidden">
+                      <Image
+                        src={img}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+                  )}
 
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{item.title}</h3>
-                      <p className="text-gray-600">₹{item.price}</p>
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-serif text-xl text-[#1a1714] font-normal leading-snug">{item.title}</h3>
+                      {item.vendor && <p className="text-xs text-[#8c8275] mt-1">by {item.vendor}</p>}
+                      <p className="text-base text-gray-900 font-medium mt-3">₹{item.price.toLocaleString('en-IN')}</p>
+                    </div>
 
-                      <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-3 mt-4">
+                      <div className="flex items-center border border-[#dcd5c9] rounded bg-[#faf9f6]">
                         <button
-                          onClick={() => updateQuantity(item._id, item.quantity - 1)}
-                          className="px-2 py-1 border rounded hover:bg-gray-100"
+                          onClick={() => updateQuantity(itemId, item.quantity - 1)}
+                          className="px-3 py-1 text-lg font-light hover:bg-[#ded7cb] transition-colors"
                         >
                           −
                         </button>
-                        <span className="px-3">{item.quantity}</span>
+                        <span className="px-3 text-sm font-semibold text-[#1a1714]">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item._id, item.quantity + 1)}
-                          className="px-2 py-1 border rounded hover:bg-gray-100"
+                          onClick={() => updateQuantity(itemId, item.quantity + 1)}
+                          className="px-3 py-1 text-lg font-light hover:bg-[#ded7cb] transition-colors"
                         >
                           +
                         </button>
                       </div>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="font-semibold">₹{item.price * item.quantity}</p>
                       <button
-                        onClick={() => removeItem(item._id)}
-                        className="text-red-600 text-sm hover:underline mt-2"
+                        onClick={() => removeItem(itemId)}
+                        className="text-xs text-red-700 hover:text-red-900 hover:underline ml-2"
                       >
                         Remove
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <div className="text-right">
+                    <p className="font-serif text-lg font-normal text-[#1a1714]">₹{(item.price * item.quantity).toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+              );
+            })}
             </div>
 
             <div className="lg:col-span-1">
-              <div className="border border-gray-200 rounded-lg p-6 sticky top-20">
-                <div className="mb-6 pb-6 border-b">
-                  <h2 className="font-bold text-lg mb-4">Order Summary</h2>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span>₹{subtotal}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Shipping:</span>
-                      <span>{shippingCost === 0 ? 'FREE' : `₹${shippingCost}`}</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-lg pt-2">
-                      <span>Total:</span>
-                      <span>₹{total}</span>
-                    </div>
+              <div className="border border-[#ded7cb] rounded-lg p-6 bg-[#faf9f6] sticky top-24 shadow-xs">
+                <h2 className="font-serif text-2xl text-[#1a1714] font-normal mb-6 pb-4 border-b border-[#ded7cb]">Order Summary</h2>
+                
+                <div className="space-y-3 text-sm text-gray-700 mb-6">
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span className="font-medium text-gray-900">₹{subtotal.toLocaleString('en-IN')}</span>
                   </div>
-                </div>
-
-                <div className="space-y-3 mb-6">
-                  <input
-                    type="text"
-                    placeholder="Full Name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Street Address"
-                    value={formData.street}
-                    onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                  />
-                  <input
-                    type="text"
-                    placeholder="City"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                  />
-                  <input
-                    type="text"
-                    placeholder="State"
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Zip Code"
-                    value={formData.zip}
-                    onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                  />
+                  <div className="flex justify-between">
+                    <span>Shipping:</span>
+                    <span className="font-medium text-gray-900">{shippingCost === 0 ? 'FREE' : `₹${shippingCost}`}</span>
+                  </div>
+                  <div className="flex justify-between font-serif text-xl pt-4 border-t border-[#ded7cb] text-[#1a1714] font-normal">
+                    <span>Total:</span>
+                    <span>₹{total.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
 
                 <button
                   onClick={handleCheckout}
                   disabled={loading}
-                  className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 disabled:opacity-50 font-medium"
+                  className="w-full bg-[#1a1714] text-white py-3.5 rounded-full hover:bg-[#2c2622] disabled:opacity-50 font-bold text-xs uppercase tracking-wider transition-colors shadow-sm"
                 >
-                  {loading ? 'Processing...' : 'Proceed to Payment'}
+                  {loading ? 'Initiating Checkout...' : 'Proceed to Checkout'}
                 </button>
               </div>
             </div>

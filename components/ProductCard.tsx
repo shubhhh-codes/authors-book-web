@@ -3,7 +3,10 @@ import Link from 'next/link';
 import type { Product } from '@/lib/types';
 
 export default function ProductCard({ product }: { product: Product }) {
-  const image = product.images?.[0];
+  const prodId = String(product.id ?? product._id ?? '');
+  const firstImg = product.images?.[0] as any;
+  const imageUrl = firstImg?.url || firstImg?.src || product.image?.src;
+  const imageAlt = firstImg?.alt || product.title;
   const isSoldOut =
     product.inventory?.quantity !== undefined && product.inventory.quantity <= 0;
   const hasDiscount =
@@ -14,16 +17,16 @@ export default function ProductCard({ product }: { product: Product }) {
 
   return (
     <Link
-      href={`/product/${product.handle || product._id}`}
+      href={`/product/${product.handle || prodId}`}
       className="group block border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
       aria-label={`${product.title} – ₹${product.price}`}
     >
       {/* Image */}
       <div className="relative h-64 bg-gray-100 overflow-hidden">
-        {image ? (
+        {imageUrl ? (
           <Image
-            src={image.url}
-            alt={image.alt || product.title}
+            src={imageUrl}
+            alt={imageAlt || product.title}
             fill
             className={`object-cover transition-transform duration-500 ${isSoldOut ? 'opacity-60 grayscale-[30%]' : 'group-hover:scale-105'}`}
             unoptimized

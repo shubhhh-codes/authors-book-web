@@ -125,11 +125,13 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             <div className="space-y-3">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2">Products</p>
               {results.map((product) => {
-                const img = product.images?.[0]?.url;
+                const prodId = String(product.id ?? product._id ?? '');
+                const firstImg = product.images?.[0] as any;
+                const img = firstImg?.url || firstImg?.src || product.image?.src;
                 return (
                   <Link
-                    key={product._id}
-                    href={`/product/${product.handle || product._id}`}
+                    key={prodId}
+                    href={`/product/${product.handle || prodId}`}
                     onClick={onClose}
                     className="flex items-center gap-4 p-2 rounded-xl hover:bg-gray-50 transition-colors group"
                   >

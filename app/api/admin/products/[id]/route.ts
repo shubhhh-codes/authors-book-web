@@ -2,6 +2,7 @@ import { connectDB } from '@/lib/db';
 import Product from '@/lib/schemas/Product';
 import { deleteLocalImages } from '@/lib/fileUtils';
 import { AdminProductUpdateSchema, parseRequestBody, errorResponse, successResponse, getSafeErrorMessage } from '@/lib/validations';
+import { pushProductToShiprocket } from '@/lib/services/shiprocket-catalog-webhook';
 
 export async function PUT(
   request: Request,
@@ -44,6 +45,9 @@ export async function PUT(
     if (!updatedProduct) {
       return errorResponse('Product not found', 404);
     }
+
+    // Push update to Shiprocket catalog webhook (non-blocking)
+    pushProductToShiprocket(updatedProduct.toObject()).catch(() => {});
 
     return successResponse({ success: true, product: updatedProduct });
   } catch (error) {

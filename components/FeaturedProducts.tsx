@@ -11,7 +11,10 @@ interface FeaturedProductsProps {
 }
 
 function ProductCard({ product }: { product: Product }) {
-  const image = product.images?.[0];
+  const prodId = String(product.id ?? product._id ?? '');
+  const firstImg = product.images?.[0] as any;
+  const imageUrl = firstImg?.url || firstImg?.src || product.image?.src;
+  const imageAlt = firstImg?.alt || product.title;
   const hasDiscount =
     product.compareAtPrice && product.compareAtPrice > product.price;
   const discountPct = hasDiscount
@@ -20,15 +23,15 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <Link
-      href={`/product/${product.handle || product._id}`}
+      href={`/product/${product.handle || prodId}`}
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black rounded-xl"
       aria-label={`${product.title} – ₹${product.price}`}
     >
       <div className="relative aspect-[3/4] bg-gray-100 rounded-xl overflow-hidden mb-3">
-        {image ? (
+        {imageUrl ? (
           <Image
-            src={image.url}
-            alt={image.alt || product.title}
+            src={imageUrl}
+            alt={imageAlt || product.title}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
@@ -119,7 +122,7 @@ export default function FeaturedProducts({
         aria-label={`${title} products`}
       >
         {products.map((product) => (
-          <li key={product._id}>
+          <li key={String(product.id ?? product._id)}>
             <ProductCard product={product} />
           </li>
         ))}

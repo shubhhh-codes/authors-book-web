@@ -1,99 +1,96 @@
 /**
- * Rate Limiting Implementation
- * 
- * Production: Use Redis for distributed rate limiting
- * Development: In-memory store (resets on server restart)
- * 
- * Current limits:
- * - Checkout: 5 requests per IP per minute
- * - Payment verification: 10 requests per IP per minute
+ * High-Performance Sliding Window Rate Limiter
+ *
+ * Provides IP-based sliding window rate limiting for public, checkout, and catalog APIs.
+ * Supports in-memory sliding log with automated garbage collection.
  */
 
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
+interface RateLimitRecord {
+  timestamps: number[];
 }
 
-// In-memory store for rate limiting (production should use Redis)
-const rateLimitStore = new Map<string, RateLimitEntry>();
+const ipStore = new Map<string, RateLimitRecord>();
 
-/**
- * Check if request exceeds rate limit
- * Returns: { allowed: boolean, remaining: number }
- */
-export function checkRateLimit(
-  identifier: string, // Usually IP address
-  limit: number = 5,
-  windowMs: number = 60 * 1000 // 1 minute
-): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const entry = rateLimitStore.get(identifier);
+// Cleanup stale entries every 5 minutes
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, record] of ipStore.entries()) {
+      record.timestamps = record.timestamps.filter((t) => now - t < 120000);
+      if (record.timestamps.length === 0) {
+        ipStore.delete(key);
+      }
+    }
+  }, 300000);
+}
 
-  // First request or window expired
-  if (!entry || now > entry.resetTime) {
-    rateLimitStore.set(identifier, {
-      count: 1,
-      resetTime: now + windowMs,
-    });
-    return { allowed: true, remaining: limit - 1 };
-  }
-
-  // Within rate limit
-  if (entry.count < limit) {
-    entry.count++;
-    return { allowed: true, remaining: limit - entry.count };
-  }
-
-  // Exceeded rate limit
-  return { allowed: false, remaining: 0 };
+export interface RateLimitResult {
+  success: boolean;
+  allowed: boolean;
+  limit: number;
+  remaining: number;
+  reset: number; // seconds until reset
+  resetTime: number; // timestamp in ms
 }
 
 /**
- * Get client IP from request
- * Works with: localhost, Vercel, Cloudflare, proxies
+ * Extract client IP from a standard Request object.
  */
 export function getClientIp(request: Request): string {
-  // Check for proxied IP headers (Vercel, Cloudflare, etc.)
-  const xForwardedFor = request.headers.get('x-forwarded-for');
-  if (xForwardedFor) {
-    // x-forwarded-for can be: client, proxy1, proxy2
-    return xForwardedFor.split(',')[0].trim();
-  }
-
-  // Fallback headers
-  const xRealIp = request.headers.get('x-real-ip');
-  if (xRealIp) return xRealIp;
-
-  // For localhost/development
-  return 'unknown';
+  const forwarded = request.headers.get('x-forwarded-for');
+  const realIp = request.headers.get('x-real-ip');
+  return (forwarded ? forwarded.split(',')[0].trim() : (realIp || '127.0.0.1')).trim();
 }
 
 /**
- * Cleanup old entries to prevent memory leaks
- * Call periodically (e.g., every hour)
+ * Limit incoming requests per client IP or custom identifier key.
+ *
+ * @param keyOrRequest - Next.js Request or custom string key (e.g. `checkout:${ip}`)
+ * @param limit - Maximum requests allowed per window (default: 100)
+ * @param windowMs - Window duration in milliseconds (default: 60,000ms = 1 min)
  */
-export function cleanupRateLimitStore(): void {
+export function checkRateLimit(
+  keyOrRequest: Request | string,
+  limit: number = 100,
+  windowMs: number = 60000
+): RateLimitResult {
+  const key = typeof keyOrRequest === 'string' ? keyOrRequest : getClientIp(keyOrRequest);
+
   const now = Date.now();
-  let removed = 0;
+  const windowStart = now - windowMs;
 
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (now > entry.resetTime) {
-      rateLimitStore.delete(key);
-      removed++;
-    }
+  let record = ipStore.get(key);
+  if (!record) {
+    record = { timestamps: [] };
+    ipStore.set(key, record);
   }
 
-  if (removed > 0) {
-    console.log(`Rate limit cleanup: removed ${removed} expired entries`);
+  // Filter timestamps within current window
+  record.timestamps = record.timestamps.filter((t) => t > windowStart);
+
+  if (record.timestamps.length >= limit) {
+    const oldest = record.timestamps[0];
+    const resetSeconds = Math.max(1, Math.ceil((oldest + windowMs - now) / 1000));
+    return {
+      success: false,
+      allowed: false,
+      limit,
+      remaining: 0,
+      reset: resetSeconds,
+      resetTime: oldest + windowMs,
+    };
   }
-}
 
-// Run cleanup every hour
-if (typeof globalThis !== 'undefined' && !globalThis._rateLimitCleanupScheduled) {
-  globalThis._rateLimitCleanupScheduled = true;
-  setInterval(cleanupRateLimitStore, 60 * 60 * 1000);
-}
+  record.timestamps.push(now);
+  const remaining = Math.max(0, limit - record.timestamps.length);
+  const resetSeconds = Math.ceil(windowMs / 1000);
 
-declare global {
-  var _rateLimitCleanupScheduled: boolean | undefined;
+  return {
+    success: true,
+    allowed: true,
+    limit,
+    remaining,
+    reset: resetSeconds,
+    resetTime: now + windowMs,
+  };
 }

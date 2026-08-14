@@ -39,21 +39,25 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     return () => window.removeEventListener('cart-updated', loadCart);
   }, [isOpen]);
 
-  const updateQuantity = (id: string, newQty: number) => {
+  const getItemId = (item: CartItem): string => String(item.id ?? item._id ?? '');
+
+  const updateQuantity = (id: string | number, newQty: number) => {
     if (newQty < 1) return;
-    const targetItem = cart.find((item) => item._id === id);
+    const strId = String(id);
+    const targetItem = cart.find((item) => getItemId(item) === strId);
     const maxStock = targetItem?.inventory?.quantity ?? 99;
     const cappedQty = Math.min(newQty, maxStock);
 
-    const updated = cart.map((item) => (item._id === id ? { ...item, quantity: cappedQty } : item));
+    const updated = cart.map((item) => (getItemId(item) === strId ? { ...item, quantity: cappedQty } : item));
     setCart(updated);
     localStorage.setItem('ab_cart', JSON.stringify(updated));
     localStorage.setItem('cart', JSON.stringify(updated));
     window.dispatchEvent(new Event('cart-updated'));
   };
 
-  const removeItem = (id: string) => {
-    const updated = cart.filter((item) => item._id !== id);
+  const removeItem = (id: string | number) => {
+    const strId = String(id);
+    const updated = cart.filter((item) => getItemId(item) !== strId);
     setCart(updated);
     localStorage.setItem('ab_cart', JSON.stringify(updated));
     localStorage.setItem('cart', JSON.stringify(updated));
@@ -137,9 +141,11 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               </div>
             ) : (
               cart.map((item) => {
-                const img = item.images?.[0]?.url;
+                const itemId = getItemId(item);
+                const firstImg = item.images?.[0] as any;
+                const img = firstImg?.url || firstImg?.src || item.image?.src;
                 return (
-                  <div key={item._id} className="flex gap-4 pb-6 border-b border-gray-100 last:border-b-0">
+                  <div key={itemId} className="flex gap-4 pb-6 border-b border-gray-100 last:border-b-0">
                     <div className="relative w-20 h-24 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
                       {img ? (
                         <Image src={img} alt={item.title} fill className="object-cover" unoptimized />
@@ -155,7 +161,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                             {item.title}
                           </h3>
                           <button
-                            onClick={() => removeItem(item._id)}
+                            onClick={() => removeItem(itemId)}
                             className="text-gray-400 hover:text-red-600 text-xs transition-colors p-1"
                             aria-label="Remove item"
                           >
@@ -168,14 +174,14 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                       <div className="flex items-center justify-between mt-3">
                         <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-xs">
                           <button
-                            onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                            onClick={() => updateQuantity(itemId, item.quantity - 1)}
                             className="px-2 py-1 hover:bg-gray-100 transition-colors"
                           >
                             −
                           </button>
                           <span className="px-3 font-semibold">{item.quantity}</span>
                           <button
-                            onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                            onClick={() => updateQuantity(itemId, item.quantity + 1)}
                             className="px-2 py-1 hover:bg-gray-100 transition-colors"
                           >
                             +

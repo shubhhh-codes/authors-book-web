@@ -77,9 +77,10 @@ export default function ProductPage() {
     const currentStock = product.inventory?.quantity;
     if (currentStock !== undefined && currentStock <= 0) return;
 
+    const prodKey = String(product.id ?? product._id ?? '');
     const saved = localStorage.getItem('ab_cart') || localStorage.getItem('cart') || '[]';
     const cart: CartItem[] = JSON.parse(saved);
-    const existingItem = cart.find((item: CartItem) => item._id === product._id);
+    const existingItem = cart.find((item: CartItem) => String(item.id ?? item._id ?? '') === prodKey);
 
     let totalQty = quantity;
     if (existingItem) {
@@ -113,17 +114,20 @@ export default function ProductPage() {
 
   // Filter products using quality guard
   const validProducts = allProducts.filter(isValidCatalogProduct);
+  const currentProdId = String(product?.id ?? product?._id ?? '');
 
   const categoryProducts = validProducts.filter(
     (p) =>
-      String(p._id) !== String(product?._id) &&
+      String(p.id ?? p._id ?? '') !== currentProdId &&
       p.category &&
       product?.category &&
       p.category.trim().toLowerCase() === product.category.trim().toLowerCase()
   );
 
   const fallbackProducts = validProducts.filter(
-    (p) => String(p._id) !== String(product?._id) && !categoryProducts.some((cp) => String(cp._id) === String(p._id))
+    (p) =>
+      String(p.id ?? p._id ?? '') !== currentProdId &&
+      !categoryProducts.some((cp) => String(cp.id ?? cp._id ?? '') === String(p.id ?? p._id ?? ''))
   );
 
   // Prioritize in-stock items first

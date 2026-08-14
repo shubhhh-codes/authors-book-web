@@ -200,7 +200,10 @@ export default function ProductShowcase({ initialProducts = [] }: ProductShowcas
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-8">
             {filteredProducts.map((product) => {
-              const image = product.images?.[0];
+              const prodId = String(product.id ?? product._id ?? '');
+              const firstImg = product.images?.[0] as any;
+              const imageUrl = firstImg?.url || firstImg?.src || product.image?.src;
+              const imageAlt = firstImg?.alt || product.title;
               const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
               const discountPct = hasDiscount
                 ? Math.round(((product.compareAtPrice! - product.price) / product.compareAtPrice!) * 100)
@@ -208,17 +211,17 @@ export default function ProductShowcase({ initialProducts = [] }: ProductShowcas
 
               return (
                 <Link
-                  key={product._id}
-                  href={`/product/${product.handle || product._id}`}
+                  key={prodId}
+                  href={`/product/${product.handle || prodId}`}
                   className="group block bg-[var(--paper-light)] border border-[var(--hairline)] rounded-2xl overflow-hidden hover:border-[var(--ink)] transition-all duration-300 shadow-2xs hover:shadow-md"
                   aria-label={`${product.title} – ₹${product.price}`}
                 >
                   {/* Image Container */}
                   <div className="relative aspect-[3/4] bg-[var(--paper)] overflow-hidden">
-                    {image ? (
+                    {imageUrl ? (
                       <Image
-                        src={image.url}
-                        alt={image.alt || product.title}
+                        src={imageUrl}
+                        alt={imageAlt || product.title}
                         fill
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"

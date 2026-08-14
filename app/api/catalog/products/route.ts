@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { catalogService } from '@/lib/services/catalogService';
 import { catalogQuerySchema } from '@/lib/validations';
+import { formatProductForShiprocket } from '@/lib/services/catalogTransform';
 import {
   createAPIKeyValidator,
   validateRateLimit,
+  verifyHMAC,
   createErrorResponse,
   createSuccessResponse,
 } from '@/lib/middleware/apiSecurity';
@@ -16,11 +18,13 @@ const validateAPIKey = createAPIKeyValidator(
 /**
  * GET /api/catalog/products
  *
- * Shiprocket-facing products endpoint secured by API key.
+ * Shiprocket-facing products endpoint secured by API key + HMAC.
+ * Returns product format required by Shiprocket catalog sync.
  *
  * Headers required:
- *   X-API-Key    – one of the keys in SHIPROCKET_API_KEYS
- *   X-Client-ID  – used for per-client rate limiting
+ *   X-Api-Key             – one of the keys in SHIPROCKET_API_KEYS
+ *   X-Api-HMAC-SHA256     – HMAC signature (optional in dev)
+ *   X-Client-ID           – used for per-client rate limiting
  *
  * Query params:
  *   page, limit, sortBy (createdAt|price|stock), sortOrder (asc|desc), isActive
@@ -30,6 +34,18 @@ export async function GET(request: NextRequest) {
   const keyCheck = validateAPIKey(request);
   if (!keyCheck.valid) {
     return createErrorResponse(keyCheck.error!, 401);
+  }
+
+  // ── HMAC verification (when secret is configured) ─────────────────────────
+  const hmacHeader = request.headers.get('X-Api-HMAC-SHA256');
+  const secretKey = process.env.SRC_SECRET_KEY;
+  if (hmacHeader && secretKey) {
+    // For GET requests, HMAC is computed over the full URL query string
+    const { searchParams } = new URL(request.url);
+    const queryString = searchParams.toString();
+    if (!verifyHMAC(queryString, hmacHeader, secretKey)) {
+      return createErrorResponse('Invalid HMAC signature', 401);
+    }
   }
 
   // ── Rate limit ────────────────────────────────────────────────────────────
@@ -64,11 +80,15 @@ export async function GET(request: NextRequest) {
       validated.isActive ?? true
     );
 
+    // Format for Shiprocket
+    const products = result.data.map((p: any) => formatProductForShiprocket(p));
+
     // Async audit log — don't await so it doesn't slow the response
     catalogService.logCatalogSync('products', 'success', result.data.length).catch(() => {});
 
     return createSuccessResponse({
-      ...result,
+      products,
+      pagination: result.pagination,
       timestamp: new Date().toISOString(),
       endpoint: '/api/catalog/products',
     });
@@ -86,3 +106,4 @@ export async function OPTIONS() {
     { status: 200 }
   );
 }
+

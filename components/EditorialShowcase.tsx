@@ -125,7 +125,8 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
     try {
       const saved = localStorage.getItem('ab_cart') || localStorage.getItem('cart') || '[]';
       const cart: CartItem[] = JSON.parse(saved);
-      const existing = cart.find((item) => item._id === product._id);
+      const prodKey = String(product.id ?? product._id ?? '');
+      const existing = cart.find((item) => String(item.id ?? item._id ?? '') === prodKey);
       let totalQty = 1;
 
       if (existing) {
@@ -143,7 +144,7 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
       localStorage.setItem('cart', JSON.stringify(cart));
       window.dispatchEvent(new Event('cart-updated'));
 
-      setAddedId(product._id);
+      setAddedId(prodKey);
       setAddedToastData({ product, quantity: totalQty });
       setTimeout(() => setAddedId(null), 2500);
       startToastTimer(7500);
@@ -276,25 +277,28 @@ export default function EditorialShowcase({ onOpenCart }: EditorialShowcaseProps
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-8">
             {filteredProducts.map((product) => {
-              const image = product.images?.[0];
+              const prodId = String(product.id ?? product._id ?? '');
+              const firstImg = product.images?.[0] as any;
+              const imageUrl = firstImg?.url || firstImg?.src || product.image?.src || '';
+              const imageAlt = firstImg?.alt || product.title;
               const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
               const discountPct = hasDiscount
                 ? Math.round(((product.compareAtPrice! - product.price) / product.compareAtPrice!) * 100)
                 : 0;
-              const isJustAdded = addedId === product._id;
+              const isJustAdded = addedId === prodId;
               const isSoldOut =
                 product.inventory?.quantity !== undefined && product.inventory.quantity <= 0;
 
               return (
                 <div
-                  key={product._id}
+                  key={prodId}
                   className="group relative flex flex-col bg-[var(--paper-light)] border border-[var(--hairline)] rounded-2xl overflow-hidden hover:border-[var(--ink)] transition-all duration-300 shadow-2xs hover:shadow-md"
                 >
-                  <Link href={`/product/${product.handle || product._id}`} className="block relative aspect-[3/4] bg-[var(--paper)] overflow-hidden">
-                    {image ? (
+                  <Link href={`/product/${product.handle || prodId}`} className="block relative aspect-[3/4] bg-[var(--paper)] overflow-hidden">
+                    {imageUrl ? (
                       <Image
-                        src={image.url}
-                        alt={image.alt || product.title}
+                        src={imageUrl}
+                        alt={imageAlt || product.title}
                         fill
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"

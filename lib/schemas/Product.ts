@@ -36,6 +36,7 @@ const ProductSchema = new mongoose.Schema({
   // ── Catalog / Shiprocket sync fields ─────────────────────
   collectionId: { type: Schema.Types.ObjectId, ref: 'Collection', index: true, sparse: true },
   isActive: { type: Boolean, default: true, index: true },
+  shiprocketVariantId: { type: String, index: true, sparse: true },
   dimensions: {
     length: Number,
     width: Number,
