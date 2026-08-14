@@ -236,7 +236,42 @@ export const AdminShelfBookUpdateSchema = AdminShelfBookCreateSchema.partial();
 export type AdminShelfBookUpdate = z.infer<typeof AdminShelfBookUpdateSchema>;
 
 
+// ── Shiprocket Checkout Validation ──────────────────────────
+
+export const shiprocketCustomerSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email'),
+  phone: z.string().regex(/^\d{10}$/, 'Phone must be 10 digits'),
+});
+
+export const shiprocketAddressSchema = z.object({
+  street: z.string().min(5, 'Street address required'),
+  city: z.string().min(2, 'City required'),
+  state: z.string().min(2, 'State required'),
+  postalCode: z.string().regex(/^\d{6}$/, 'Postal code must be 6 digits'),
+  country: z.string().default('IN'),
+});
+
+export const shiprocketCheckoutSchema = z.object({
+  customerId: z.string().optional(),
+  customer: shiprocketCustomerSchema,
+  shippingAddress: shiprocketAddressSchema,
+  billingAddress: shiprocketAddressSchema.optional(),
+  cartItems: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      quantity: z.number().positive(),
+      price: z.number().positive(),
+      sku: z.string().optional(),
+    })
+  ).min(1, 'Cart is empty'),
+});
+
+export type ShiprocketCheckoutData = z.infer<typeof shiprocketCheckoutSchema>;
+
 // ── Utility Functions ────────────────────────────────────────
+
 
 /**
  * Safe JSON parsing with Zod validation.

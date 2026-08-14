@@ -141,6 +141,65 @@ export interface RazorpayConstructor {
   new (options: Record<string, unknown>): RazorpayInstance;
 }
 
+// ── Shiprocket Checkout (SRC) ────────────────────────────────
+
+export interface SRCSessionResponse {
+  success: boolean;
+  data?: {
+    session_id: string;
+    order_id: string;
+    checkout_url: string;
+    embedded_url: string;
+    expires_at: string;
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+export interface SRCWebhookEvent {
+  event: 'order.created' | 'order.confirmed' | 'order.failed' | 'order.cancelled';
+  data: {
+    order_id: string;
+    session_id: string;
+    order_amount: number;
+    payment_status: 'completed' | 'failed' | 'pending';
+    transaction_id?: string;
+    timestamp: string;
+  };
+}
+
+export interface CheckoutSessionRequest {
+  customerId?: string;
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  shippingAddress: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country?: string;
+  };
+  billingAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country?: string;
+  };
+  cartItems: Array<{
+    id: string;
+    title: string;
+    quantity: number;
+    price: number;
+    sku?: string;
+  }>;
+}
+
 export interface ShelfBook {
   _id?: string;
   id: string;
