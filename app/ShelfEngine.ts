@@ -205,6 +205,7 @@ export class ShelfEngine {
   private stripeGeometrySize = new THREE.Vector3();
   private focusCameraPosition = new THREE.Vector3();
   private focusCameraTarget = new THREE.Vector3();
+  private tempWorldPosition = new THREE.Vector3();
   private responsiveBrowseCamera = browseCamera.clone();
   private lastTimestamp = 0;
   private lastDiagnosticsAt = 0;
@@ -1289,7 +1290,7 @@ export class ShelfEngine {
   private updateFocusCamera(delta: number) {
     if (this.selectedIndex === null) return;
     const selected = this.runtimeBooks[this.selectedIndex];
-    const worldPosition = new THREE.Vector3();
+    const worldPosition = this.tempWorldPosition;
     selected.content.getWorldPosition(worldPosition);
     this.frameFocusedBook(worldPosition, easeOutCubic(this.focusProgress));
     const camLambda = this.isInspectingSwitch ? 6.5 : (this.reducedMotion ? 28 : 13);
@@ -1371,7 +1372,7 @@ export class ShelfEngine {
       this.camera.position.copy(this.responsiveBrowseCamera);
       this.camera.lookAt(browseTarget);
     } else if (this.mode === "inspect" && this.selectedIndex !== null) {
-      const worldPosition = new THREE.Vector3();
+      const worldPosition = this.tempWorldPosition;
       this.runtimeBooks[this.selectedIndex].content.getWorldPosition(
         worldPosition,
       );
@@ -1409,7 +1410,7 @@ export class ShelfEngine {
       ) {
         throw new Error("Shared book bounds are invalid");
       }
-      const geometryCenter = geometry.boundingBox.getCenter(new THREE.Vector3());
+      const geometryCenter = geometry.boundingBox.getCenter(this.tempWorldPosition);
       geometry.translate(
         -geometryCenter.x,
         -geometryCenter.y,
@@ -1652,7 +1653,7 @@ export class ShelfEngine {
     this.shelfFurniture.visible = false;
 
     // 6. Position the camera at the focused-book view
-    const worldPosition = new THREE.Vector3();
+    const worldPosition = this.tempWorldPosition;
     selected.content.getWorldPosition(worldPosition);
     this.frameFocusedBook(worldPosition, 1);
     this.camera.position.copy(this.focusCameraPosition);
@@ -1695,7 +1696,7 @@ export class ShelfEngine {
     if (this.mode !== "inspect" || this.selectedIndex === null) return;
     this.detailScrollProgress = 0;
     const selected = this.runtimeBooks[this.selectedIndex];
-    const worldPosition = new THREE.Vector3();
+    const worldPosition = this.tempWorldPosition;
     selected.content.getWorldPosition(worldPosition);
     this.frameFocusedBook(worldPosition);
     this.controls.target.copy(this.focusCameraTarget);
