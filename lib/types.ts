@@ -141,6 +141,65 @@ export interface RazorpayConstructor {
   new (options: Record<string, unknown>): RazorpayInstance;
 }
 
+// ── Shiprocket Checkout (SRC) ────────────────────────────────
+
+export interface SRCSessionResponse {
+  success: boolean;
+  data?: {
+    session_id: string;
+    order_id: string;
+    checkout_url: string;
+    embedded_url: string;
+    expires_at: string;
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+export interface SRCWebhookEvent {
+  event: 'order.created' | 'order.confirmed' | 'order.failed' | 'order.cancelled';
+  data: {
+    order_id: string;
+    session_id: string;
+    order_amount: number;
+    payment_status: 'completed' | 'failed' | 'pending';
+    transaction_id?: string;
+    timestamp: string;
+  };
+}
+
+export interface CheckoutSessionRequest {
+  customerId?: string;
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  shippingAddress: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country?: string;
+  };
+  billingAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country?: string;
+  };
+  cartItems: Array<{
+    id: string;
+    title: string;
+    quantity: number;
+    price: number;
+    sku?: string;
+  }>;
+}
+
 export interface ShelfBook {
   _id?: string;
   id: string;
@@ -169,3 +228,48 @@ export interface ShelfBook {
   updatedAt?: string;
 }
 
+// ── Shiprocket Catalog API Types ─────────────────────────────
+
+export interface IProduct {
+  _id: string;
+  title: string;
+  description: string;
+  price: number;
+  sku?: string;
+  stock?: number;
+  category?: string;
+  collectionId?: string;
+  images: Array<{ url: string; alt: string; position?: number }>;
+  dimensions?: {
+    length: number;
+    width: number;
+    height: number;
+    weight: number;
+  };
+  isActive: boolean;
+  published: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ICollection {
+  _id: string;
+  name: string;
+  slug: string;
+  description: string;
+  image?: string;
+  isActive: boolean;
+  productCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CatalogSyncLog {
+  _id: string;
+  syncType: 'products' | 'collections' | 'products_by_collection';
+  status: 'success' | 'failed' | 'partial';
+  recordsProcessed: number;
+  recordsFailed: number;
+  errorDetails?: string;
+  syncedAt: Date;
+}

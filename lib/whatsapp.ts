@@ -189,3 +189,36 @@ export async function sendWhatsAppText(phone: string, message: string): Promise<
  * 
  * authorsbook.store
  */
+/**
+ * Send a Shiprocket Checkout link via WhatsApp text message.
+ * Only works within an active 24-hour Service Window.
+ */
+export async function sendCheckoutLink(
+  phone: string,
+  data: { checkoutUrl: string; orderId: string; expiresAt: string }
+): Promise<boolean> {
+  const message =
+    `🛒 Complete your order *#${data.orderId}* at Authors Book!\n\n` +
+    `Click here to pay securely:\n${data.checkoutUrl}\n\n` +
+    `⏳ This link expires at ${data.expiresAt}.\n\n` +
+    `authorsbook.store`;
+  return sendWhatsAppText(phone, message);
+}
+
+/**
+ * Send an order tracking link via WhatsApp text message.
+ * Only works within an active 24-hour Service Window.
+ */
+export async function sendOrderTrackingLink(
+  phone: string,
+  data: { orderId: string; trackingUrl: string; estimatedDelivery?: string }
+): Promise<boolean> {
+  const deliveryLine = data.estimatedDelivery
+    ? `\n📅 Estimated delivery: ${data.estimatedDelivery}`
+    : '';
+  const message =
+    `📦 Your Authors Book order *#${data.orderId}* has shipped!\n\n` +
+    `Track your package here:\n${data.trackingUrl}${deliveryLine}\n\n` +
+    `authorsbook.store`;
+  return sendWhatsAppText(phone, message);
+}

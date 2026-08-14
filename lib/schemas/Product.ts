@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 
 const ProductSchema = new mongoose.Schema({
   handle: String,
@@ -33,6 +33,15 @@ const ProductSchema = new mongoose.Schema({
   genre: String,
   language: String,
   createdAt: { type: Date, default: Date.now },
+  // ── Catalog / Shiprocket sync fields ─────────────────────
+  collectionId: { type: Schema.Types.ObjectId, ref: 'Collection', index: true, sparse: true },
+  isActive: { type: Boolean, default: true, index: true },
+  dimensions: {
+    length: Number,
+    width: Number,
+    height: Number,
+    weight: Number,
+  },
 });
 
 // Add indexes for better query performance
