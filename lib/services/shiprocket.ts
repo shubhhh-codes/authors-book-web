@@ -50,6 +50,30 @@ interface SRCCreateSessionPayload {
   udf1?: string;
 }
 
+let _clockOffset = 0;
+let _lastTimeSync = 0;
+
+async function getSyncedDate(): Promise<Date> {
+  const now = Date.now();
+  // Refresh clock offset every 10 minutes
+  if (now - _lastTimeSync > 10 * 60 * 1000) {
+    try {
+      const res = await axios.get('https://checkout-api.shiprocket.com/', {
+        timeout: 3000,
+        validateStatus: () => true,
+      });
+      const serverDateStr = res.headers['date'];
+      if (serverDateStr) {
+        _clockOffset = new Date(serverDateStr).getTime() - Date.now();
+        _lastTimeSync = now;
+      }
+    } catch {
+      // If request fails, fallback to local clock
+    }
+  }
+  return new Date(Date.now() + _clockOffset);
+}
+
 class ShiprocketService {
   private client: AxiosInstance;
   private secretKey: string;
@@ -69,7 +93,7 @@ class ShiprocketService {
     this.client = axios.create({
       baseURL:
         process.env.SRC_API_BASE_URL ||
-        'https://checkout-api.shiprocket.in/api/v1',
+        'https://checkout-api.shiprocket.com/api/v1',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
@@ -148,6 +172,68 @@ class ShiprocketService {
       throw error;
     }
   }
+
+  /** Generate Fastrr Access Token for one-click checkout initiation */
+  async generateAccessToken(
+    cartItems: Array<{ variant_id: string; quantity: number }>,
+    redirectUrl: string
+  ): Promise<{ token: string }> {
+    const syncedDate = await getSyncedDate();
+    const timestamp = syncedDate.toISOString();
+    const payload = {
+      cart_data: {
+        items: cartItems.map((item) => ({
+          variant_id: item.variant_id,
+          quantity: item.quantity,
+        })),
+      },
+      redirect_url: redirectUrl,
+      timestamp,
+    };
+
+    const payloadString = JSON.stringify(payload);
+    const signature = crypto
+      .createHmac('sha256', this.secretKey)
+      .update(payloadString)
+      .digest('base64');
+
+
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_SRC_API_KEY || '';
+      const response = await this.client.post<{ success: boolean; result?: { token: string }; error?: { message: string } }>(
+        '/access-token/checkout',
+        payloadString,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Api-Key': apiKey,
+            'X-Api-HMAC-SHA256': signature,
+            // Override the default client bearer token
+            'Authorization': `Bearer ${apiKey}`
+          },
+        }
+      );
+
+      if (!response.data.success || !response.data.result?.token) {
+        throw new Error(
+          response.data.error?.message || 'Access token response was unsuccessful'
+        );
+      }
+
+      return response.data.result;
+    } catch (error: any) {
+      if (error.response?.data) {
+        console.error('[Shiprocket] Access token error response:', JSON.stringify(error.response.data, null, 2));
+        const detailedError =
+          error.response.data.error?.message ||
+          error.response.data.message ||
+          JSON.stringify(error.response.data.error || error.response.data);
+        throw new Error(`[Shiprocket Error] ${detailedError}`);
+      }
+      console.error('[Shiprocket] Access token generation failed:', error);
+      throw error;
+    }
+  }
 }
 
 // Singleton – instantiated lazily so the env check doesn't run at build time
@@ -171,4 +257,8 @@ export const shiprocketService = {
   ) => getShiprocketService().getOrderDetails(...args),
   cancelOrder: (...args: Parameters<ShiprocketService['cancelOrder']>) =>
     getShiprocketService().cancelOrder(...args),
+  generateAccessToken: (
+    ...args: Parameters<ShiprocketService['generateAccessToken']>
+  ) => getShiprocketService().generateAccessToken(...args),
 };
+

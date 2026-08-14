@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "@fontsource-variable/newsreader";
 import "@fontsource-variable/inter";
 import "./globals.css";
@@ -39,8 +40,14 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth" className={`${inter.variable} h-full`}>
       <body className="min-h-full flex flex-col bg-white text-gray-900 antialiased">
+        <input type="hidden" value="authorsbook.vercel.app" id="sellerDomain" />
         {children}
+        <Script
+          src="https://checkout-ui.shiprocket.com/assets/js/channels/shopify.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
 }
+
