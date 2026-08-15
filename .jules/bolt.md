@@ -1,0 +1,3 @@
+## 2024-05-18 - Replacing `Model.find().lean()` with `Model.aggregate()`
+**Learning:** Using `Model.find().lean()` followed by mapping over all documents in memory to group data creates CPU and memory bottlenecks when dataset sizes grow (e.g., getting customer data based on Orders in `AdminCustomersPage`). A MongoDB aggregation pipeline pushes the grouping and projection onto the database level, avoiding sending all raw documents over the wire.
+**Action:** When grouping or reducing data across a large MongoDB collection, always use `Model.aggregate([{ $group: ... }])` rather than fetching all records and reducing in Javascript.
