@@ -30,7 +30,7 @@ const ProductCard = memo(function ProductCard({ product }: { product: Product })
             alt={imageAlt || product.title}
             fill
             className={`object-cover transition-transform duration-500 ${isSoldOut ? 'opacity-60 grayscale-[30%]' : 'group-hover:scale-105'}`}
-            unoptimized
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">

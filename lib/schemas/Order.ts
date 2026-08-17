@@ -25,6 +25,7 @@ const OrderSchema = new mongoose.Schema({
     default: 'pending',
   },
   paymentId: String,
+  discountCode: { type: String, default: null }, // BUG-04 fix: track applied discount
   razorpayOrderId: String,
   shippingAddress: {
     street: String,

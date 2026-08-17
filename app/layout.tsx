@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import "@fontsource-variable/newsreader";
-import "@fontsource-variable/inter";
+// @fontsource-variable/inter removed — next/font/google Inter already handles this font
 import "./globals.css";
 
 const inter = Inter({

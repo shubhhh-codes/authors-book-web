@@ -38,6 +38,7 @@ export async function POST(request: Request): Promise<Response> {
       customerName,
       customerPhone,
       shippingAddress,
+      discountCode, // BUG-04 fix: persist applied discount code
     } = payload;
 
     const productIds = items.map(item => {
@@ -99,6 +100,7 @@ export async function POST(request: Request): Promise<Response> {
       total,
       shippingAddress,
       status: 'pending',
+      discountCode: discountCode ? discountCode.toUpperCase().trim() : null, // BUG-04
     });
 
     await order.save();

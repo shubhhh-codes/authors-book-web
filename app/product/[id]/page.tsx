@@ -78,8 +78,14 @@ export default function ProductPage() {
     if (currentStock !== undefined && currentStock <= 0) return;
 
     const prodKey = String(product.id ?? product._id ?? '');
-    const saved = localStorage.getItem('ab_cart') || localStorage.getItem('cart') || '[]';
-    const cart: CartItem[] = JSON.parse(saved);
+    // BUG-02 fix: read only from ab_cart; migrate legacy 'cart' key once
+    const rawCart = localStorage.getItem('ab_cart') || localStorage.getItem('cart') || '[]';
+    if (!localStorage.getItem('ab_cart') && localStorage.getItem('cart')) {
+      // One-time migration of legacy key
+      localStorage.setItem('ab_cart', rawCart);
+      localStorage.removeItem('cart');
+    }
+    const cart: CartItem[] = JSON.parse(rawCart);
     const existingItem = cart.find((item: CartItem) => String(item.id ?? item._id ?? '') === prodKey);
 
     let totalQty = quantity;
@@ -92,7 +98,7 @@ export default function ProductPage() {
     }
 
     localStorage.setItem('ab_cart', JSON.stringify(cart));
-    localStorage.setItem('cart', JSON.stringify(cart));
+    // BUG-02 fix: removed duplicate write to legacy 'cart' key
     window.dispatchEvent(new Event('cart-updated'));
 
     // Show non-disruptive feedback button state + floating toast notification

@@ -26,6 +26,7 @@ export const CheckoutRequestSchema = z.object({
   customerName: z.string().min(2, 'Name must be at least 2 characters'),
   customerPhone: z.string().regex(/^\d{10}$/, 'Valid 10-digit phone number required'),
   shippingAddress: ShippingAddressSchema,
+  discountCode: z.string().optional(), // BUG-04 fix: persist applied discount code
 });
 
 export type CheckoutRequest = z.infer<typeof CheckoutRequestSchema>;

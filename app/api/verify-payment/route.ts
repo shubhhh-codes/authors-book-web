@@ -1,6 +1,7 @@
 import { connectDB } from '@/lib/db';
 import Order from '@/lib/schemas/Order';
 import Product from '@/lib/schemas/Product';
+import Discount from '@/lib/schemas/Discount';
 import crypto from 'crypto';
 import { VerifyPaymentSchema, parseRequestBody, errorResponse, successResponse, getSafeErrorMessage } from '@/lib/validations';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -75,6 +76,19 @@ export async function POST(request: Request): Promise<Response> {
     order.paymentId = razorpayPaymentId;
     order.timestamps.paid = new Date();
     await order.save();
+
+    // BUG-04 fix: atomically increment discount usageCount (race-condition safe)
+    if (order.discountCode) {
+      try {
+        await Discount.findOneAndUpdate(
+          { code: order.discountCode, active: true },
+          { $inc: { usageCount: 1 } }
+        );
+      } catch (discountError) {
+        // Non-blocking — don't fail payment verification if discount update fails
+        console.warn('Discount usageCount increment failed (non-blocking):', discountError);
+      }
+    }
 
     // WhatsApp notification — fire-and-forget, never blocks payment confirmation
     try {
