@@ -1,8 +1,9 @@
+import { memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/lib/types';
 
-export default function ProductCard({ product }: { product: Product }) {
+const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
   const prodId = String(product.id ?? product._id ?? '');
   const firstImg = product.images?.[0] as any;
   const imageUrl = firstImg?.url || firstImg?.src || product.image?.src;
@@ -82,4 +83,6 @@ export default function ProductCard({ product }: { product: Product }) {
       </div>
     </Link>
   );
-}
+});
+
+export default ProductCard;

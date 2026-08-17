@@ -7,27 +7,39 @@ export const dynamic = 'force-dynamic';
 async function getCustomersData() {
   try {
     await connectDB();
-    const orders = await Order.find({}).lean<OrderType[]>();
+    const customers = await Order.aggregate([
+      {
+        $group: {
+          _id: { $ifNull: ['$customerEmail', 'unknown@example.com'] },
+          name: { $first: { $ifNull: ['$customerName', 'Guest Customer'] } },
+          email: { $first: { $ifNull: ['$customerEmail', 'unknown@example.com'] } },
+          phone: { $first: { $ifNull: ['$customerPhone', 'N/A'] } },
+          totalOrders: { $sum: 1 },
+          totalSpent: { $sum: { $ifNull: ['$total', 0] } },
+          lastOrderDate: { $max: { $ifNull: ['$timestamps.created', '$createdAt', new Date()] } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          name: 1,
+          email: 1,
+          phone: 1,
+          totalOrders: 1,
+          totalSpent: 1,
+          lastOrderDate: 1,
+        },
+      },
+    ]);
 
-    const customerMap: Record<string, { name: string; email: string; phone: string; totalOrders: number; totalSpent: number; lastOrderDate: Date | string }> = {};
-
-    orders.forEach((order) => {
-      const email = order.customerEmail || 'unknown@example.com';
-      if (!customerMap[email]) {
-        customerMap[email] = {
-          name: order.customerName || 'Guest Customer',
-          email,
-          phone: order.customerPhone || 'N/A',
-          totalOrders: 0,
-          totalSpent: 0,
-          lastOrderDate: order.timestamps?.created || new Date(),
-        };
-      }
-      customerMap[email].totalOrders += 1;
-      customerMap[email].totalSpent += order.total || 0;
-    });
-
-    return Object.values(customerMap);
+    return customers as {
+      name: string;
+      email: string;
+      phone: string;
+      totalOrders: number;
+      totalSpent: number;
+      lastOrderDate: Date | string;
+    }[];
   } catch (err) {
     console.error('getCustomersData error:', err);
     return [];

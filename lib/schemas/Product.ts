@@ -47,10 +47,14 @@ const ProductSchema = new mongoose.Schema({
 
 // Add indexes for better query performance
 ProductSchema.index({ published: 1, createdAt: -1 });
+ProductSchema.index({ published: 1, type: 1 });
+ProductSchema.index({ published: 1, genre: 1 });
 ProductSchema.index({ vendor: 1 });
 ProductSchema.index({ genre: 1 });
 ProductSchema.index({ type: 1 });
 ProductSchema.index({ tags: 1 });
+ProductSchema.index({ sku: 1 }, { sparse: true });
+ProductSchema.index({ numericId: 1 }, { sparse: true });
 ProductSchema.index({ handle: 1 }, { unique: true, sparse: true });
 ProductSchema.index({ title: 'text', description: 'text' }, { language_override: 'none' }); // Full-text search index
 

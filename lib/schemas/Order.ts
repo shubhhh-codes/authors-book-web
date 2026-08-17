@@ -68,7 +68,10 @@ const OrderSchema = new mongoose.Schema({
 });
 
 OrderSchema.index({ customerEmail: 1 });
+OrderSchema.index({ customerEmail: 1, 'timestamps.created': -1 });
 OrderSchema.index({ status: 1 });
 OrderSchema.index({ 'timestamps.created': -1 });
+OrderSchema.index({ transactionId: 1 }, { sparse: true });
+OrderSchema.index({ paymentId: 1 }, { sparse: true });
 
 export default mongoose.models.Order || mongoose.model('Order', OrderSchema);

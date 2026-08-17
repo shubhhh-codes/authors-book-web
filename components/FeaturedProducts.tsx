@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Product } from '@/lib/types';
@@ -10,7 +11,7 @@ interface FeaturedProductsProps {
   columns?: number;
 }
 
-function ProductCard({ product }: { product: Product }) {
+const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
   const prodId = String(product.id ?? product._id ?? '');
   const firstImg = product.images?.[0] as any;
   const imageUrl = firstImg?.url || firstImg?.src || product.image?.src;
@@ -74,7 +75,7 @@ function ProductCard({ product }: { product: Product }) {
       </div>
     </Link>
   );
-}
+});
 
 export default function FeaturedProducts({
   title = 'APPEARED IN FILMS',
