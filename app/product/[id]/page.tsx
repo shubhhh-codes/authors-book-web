@@ -34,26 +34,33 @@ export default function ProductPage() {
 
   // Fetch active product and full catalog in parallel for fast loading
   useEffect(() => {
+    let isMounted = true;
     const fetchProduct = async () => {
       setLoading(true);
       try {
-        const [productRes, listRes] = await Promise.all([
-          fetch(`/api/products/${params.id}`),
-          fetch('/api/products?limit=50'),
-        ]);
-
-        if (productRes.ok) {
+        const productRes = await fetch(`/api/products/${params.id}`);
+        if (productRes.ok && isMounted) {
           const data = await productRes.json();
           if (data && !data.error) {
             setProduct(data);
+            setLoading(false);
             // SEO redirect: if accessed via raw MongoDB ObjectId, replace URL bar with human-readable handle
             if (data.handle && params.id !== data.handle) {
               router.replace(`/product/${data.handle}`);
             }
           }
         }
+      } catch (err) {
+        console.error('Error fetching product:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
 
-        if (listRes.ok) {
+    const fetchCatalog = async () => {
+      try {
+        const listRes = await fetch('/api/products?limit=50');
+        if (listRes.ok && isMounted) {
           const listData = await listRes.json();
           const items = Array.isArray(listData) ? listData : listData.products || listData.data || [];
           if (Array.isArray(items)) {
@@ -61,15 +68,18 @@ export default function ProductPage() {
           }
         }
       } catch (err) {
-        console.error('Error fetching product:', err);
-      } finally {
-        setLoading(false);
+        console.error('Error fetching catalog:', err);
       }
     };
 
     if (params.id) {
       fetchProduct();
+      fetchCatalog();
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [params.id]);
 
   const handleAddToCart = () => {
@@ -154,11 +164,99 @@ export default function ProductPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f4f0ea] flex flex-col font-serif">
+      <div className="min-h-screen bg-[#f4f0ea] text-[#1a1714] flex flex-col font-serif selection:bg-[#1a1714] selection:text-[#f4f0ea]">
         <Navigation showAnnouncement={false} />
-        <div className="flex-1 flex items-center justify-center text-sm text-[#8c8275] tracking-widest uppercase py-24">
-          Loading Library Edition...
-        </div>
+
+        <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 md:py-12 space-y-12 sm:space-y-16 animate-pulse">
+          {/* Editorial Layout: Image Cover (Left) + Editorial Detail Copy (Right) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
+            {/* Left Column: Cover Display Skeleton */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="relative w-full aspect-[3/4] bg-[#ded7cb]/70 rounded-lg overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.06)] border border-[#ded7cb] flex items-center justify-center">
+                <div className="w-12 h-16 border-2 border-[#c8c0b2] rounded opacity-40" />
+              </div>
+              {/* Thumbnail Strip Skeleton */}
+              <div className="flex gap-2 pt-2">
+                <div className="w-16 h-20 rounded bg-[#ded7cb]/60 border border-[#ded7cb]" />
+                <div className="w-16 h-20 rounded bg-[#ded7cb]/40 border border-[#ded7cb]" />
+                <div className="w-16 h-20 rounded bg-[#ded7cb]/30 border border-[#ded7cb]" />
+              </div>
+            </div>
+
+            {/* Right Column: Editorial Details Skeleton */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Eyebrow & Stock Status Skeleton */}
+              <div className="flex items-center justify-between">
+                <div className="h-3 w-28 bg-[#ded7cb] rounded" />
+                <div className="h-5 w-24 bg-[#ded7cb]/70 rounded-full" />
+              </div>
+
+              {/* Title & Author Skeleton */}
+              <div className="space-y-3">
+                <div className="h-9 sm:h-11 w-4/5 bg-[#ded7cb] rounded" />
+                <div className="h-9 sm:h-11 w-3/5 bg-[#ded7cb] rounded" />
+                <div className="h-5 w-40 bg-[#ded7cb]/70 rounded pt-1" />
+              </div>
+
+              {/* Description Skeleton */}
+              <div className="pt-4 border-t border-[#ded7cb] space-y-2.5">
+                <div className="h-3.5 w-full bg-[#ded7cb]/60 rounded" />
+                <div className="h-3.5 w-11/12 bg-[#ded7cb]/60 rounded" />
+                <div className="h-3.5 w-4/5 bg-[#ded7cb]/60 rounded" />
+                <div className="h-3.5 w-2/3 bg-[#ded7cb]/40 rounded" />
+              </div>
+
+              {/* Specifications Grid Skeleton */}
+              <div className="border-t border-[#e0d9cf] pt-5 my-4 grid grid-cols-2 gap-6">
+                <div>
+                  <div className="h-2.5 w-16 bg-[#ded7cb]/60 rounded mb-2" />
+                  <div className="h-4 w-32 bg-[#ded7cb] rounded" />
+                </div>
+                <div>
+                  <div className="h-2.5 w-14 bg-[#ded7cb]/60 rounded mb-2" />
+                  <div className="h-6 w-24 bg-[#ded7cb] rounded" />
+                </div>
+              </div>
+
+              {/* Quantity Selector & Add to Cart Skeleton */}
+              <div className="border-t border-[#1a1714]/20 pt-6 space-y-4">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="h-12 w-28 bg-[#ded7cb]/60 rounded-lg border border-[#ded7cb]" />
+                  <div className="h-12 flex-1 bg-[#1a1714]/15 rounded-lg" />
+                </div>
+
+                {/* Delivery Estimate Skeleton */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-[#ded7cb]/60">
+                  <div className="h-3 w-48 bg-[#ded7cb]/70 rounded" />
+                  <div className="h-3 w-36 bg-[#ded7cb]/70 rounded" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recommendations Section Skeleton */}
+          <section className="border-t border-[#e0d9cf] pt-12 mt-16 space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1.5">
+                <div className="h-2.5 w-24 bg-[#ded7cb]/60 rounded" />
+                <div className="h-6 w-48 bg-[#ded7cb] rounded" />
+              </div>
+              <div className="h-3 w-28 bg-[#ded7cb]/60 rounded" />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="border border-gray-200/80 rounded-xl overflow-hidden bg-[#e9e3da]/40 space-y-3 p-3">
+                  <div className="h-48 sm:h-56 bg-[#ded7cb]/60 rounded-lg" />
+                  <div className="h-4 w-3/4 bg-[#ded7cb] rounded" />
+                  <div className="h-4 w-1/3 bg-[#ded7cb]/80 rounded" />
+                </div>
+              ))}
+            </div>
+          </section>
+        </main>
+
+        <Footer />
       </div>
     );
   }
@@ -427,8 +525,11 @@ export default function ProductPage() {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {youMayLikeProducts.map((relProduct) => (
-                <ProductCard key={relProduct._id} product={relProduct} />
+              {youMayLikeProducts.map((relProduct, idx) => (
+                <ProductCard
+                  key={String(relProduct.id ?? relProduct._id ?? relProduct.handle ?? idx)}
+                  product={relProduct}
+                />
               ))}
             </div>
           </section>
