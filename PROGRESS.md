@@ -436,3 +436,22 @@ authorsbook-web/
 ---
 
 *Update this file whenever a task is completed or a new issue is found.*
+
+
+---
+
+## Optimization Pass — 2026-08-18
+
+### Completed (this pass)
+- [x] **Security:** Next.js 16.2.12 ? 16.3.1 (fixes 3 high-severity CVEs in postcss/sharp)
+- [x] **Deps:** Removed dompurify, jest, @types/jest, ts-jest, ts-node, @types/react-dom (201 fewer packages)
+- [x] **Deps:** Added vitest + @vitest/coverage-v8 as proper devDeps
+- [x] **Dead code:** Deleted jest.config.js, jest.setup.js, benchmark.*, proxy.ts, audit scripts, duplicate vitest.config.ts
+- [x] **BUG-02:** Cart key unified to ab_cart with one-time migration
+- [x] **BUG-04:** Discount usageCount atomically incremented on payment verification
+- [x] **Perf:** next.config.ts — compress, optimizePackageImports(three), WebP/AVIF formats, cache headers
+- [x] **Perf:** Removed redundant @fontsource-variable/inter (duplicate of next/font/google Inter)
+- [x] **Perf:** ProductCard image optimization — removed unoptimized flag, added sizes prop
+- [x] **Scripts:** npm test now runs vitest; added test:types, test:coverage, test:watch, db:indexes
+- [x] **MongoDB:** Created scripts/create-indexes.js with correct field names
+- See OPTIMIZATION.md for full details
