@@ -1,0 +1,3 @@
+## 2024-05-18 - [Backend Bottleneck: Full Collection Scan for Hashed IDs]
+**Learning:** Found an anti-pattern in `app/api/products/[id]/route.ts` where a fallback mechanism for finding products by numeric ID loaded the ENTIRE product collection into memory (`Product.find({}).lean()`) just to compute hashes on `_id`. This causes O(N) memory allocation with full document payloads, risking Out of Memory (OOM) errors and severe latency as the catalog grows.
+**Action:** When a fallback requires computing a derived value on all documents in a collection, only project the bare minimum fields required for the calculation (e.g., `Product.find({}, { _id: 1 })`). After finding the match, perform a targeted query for the full document.
