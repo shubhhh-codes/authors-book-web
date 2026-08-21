@@ -25,8 +25,12 @@ export async function GET(
       }).lean();
 
       if (!product) {
-        const all = await Product.find({}).lean();
-        product = all.find((p) => toNumericId(p._id, 0) === targetNum || toNumericId(p._id, 1) === targetNum) || null;
+        // Fetch only _id to save memory and avoid loading full documents
+        const all = await Product.find({}, { _id: 1 }).lean();
+        const match = all.find((p) => toNumericId(p._id, 0) === targetNum || toNumericId(p._id, 1) === targetNum);
+        if (match) {
+          product = await Product.findById(match._id).lean();
+        }
       }
     }
 
