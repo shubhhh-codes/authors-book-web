@@ -25,8 +25,13 @@ export async function GET(
       }).lean();
 
       if (!product) {
-        const all = await Product.find({}).lean();
-        product = all.find((p) => toNumericId(p._id, 0) === targetNum || toNumericId(p._id, 1) === targetNum) || null;
+        // Bolt Optimization: Prevent full collection load in product fallback query
+        // Instead of fetching all documents, fetch only _id fields, find the match, then fetch the full document.
+        const allIds = await Product.find({}, { _id: 1 }).lean();
+        const match = allIds.find((p) => toNumericId(p._id, 0) === targetNum || toNumericId(p._id, 1) === targetNum);
+        if (match) {
+          product = await Product.findById(match._id).lean();
+        }
       }
     }
 
